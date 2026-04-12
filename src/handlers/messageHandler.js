@@ -60,26 +60,26 @@ class MessageHandler {
       await this.progress.trackActivity(activity);
       const analysis = await this.trainer.analyzeActivity(activity);
 
-      const buttons = [
-        this.bot._buildRow(
-          { text: '⚡ Кілометри', data: 'analysis_km' },
-          { text: '⚡ Темп', data: 'analysis_pace' }
-        ),
-        this.bot._buildRow(
-          { text: '◀️ Меню', data: 'menu' }
-        )
-      ];
-
       const zone = this.trainer.getPaceZone(activity.pace);
+      
+      let splitsText = '';
+      if (activity.splits && activity.splits.length > 0) {
+        splitsText = activity.splits.map(s => {
+          const sZone = this.trainer.getPaceZone(s.pace);
+          return `${s.km}км: <b>${s.pace}</b> ${sZone}`;
+        }).join(' | ');
+        splitsText = `\n\n⚡ <b>РОЗБИВКА:</b>\n${splitsText}`;
+      }
+
       const text = `🏃 <b>${activity.name}</b>
 📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
 📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
-⚡ Зона: ${zone}
+⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
 ${analysis}`;
 
-      await this.bot.sendWithButtons(chatId, text, buttons);
+      await this.bot.send(chatId, text);
     } catch (err) {
       console.error('Analyze error:', err);
       this.bot.send(chatId, '❌ Помилка аналізу.');
@@ -95,7 +95,7 @@ ${analysis}`;
     try {
       const activities = await this.strava.getRecentActivities(1);
       if (activities.length === 0) {
-        return this.bot.editWithButtons(chatId, messageId, '📭 Немає тренувань', this.bot.mainMenu());
+        return this.bot.edit(chatId, messageId, '📭 Немає тренувань');
       }
 
       const activity = activities[0];
@@ -103,26 +103,25 @@ ${analysis}`;
       const analysis = await this.trainer.analyzeActivity(activity);
 
       const zone = this.trainer.getPaceZone(activity.pace);
+      
+      let splitsText = '';
+      if (activity.splits && activity.splits.length > 0) {
+        splitsText = activity.splits.map(s => {
+          const sZone = this.trainer.getPaceZone(s.pace);
+          return `${s.km}км: <b>${s.pace}</b> ${sZone}`;
+        }).join(' | ');
+        splitsText = `\n\n⚡ <b>РОЗБИВКА:</b>\n${splitsText}`;
+      }
 
       const text = `🏃 <b>${activity.name}</b>
 📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
 📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
-⚡ Зона: ${zone}
+⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
 ${analysis}`;
 
-      const buttons = [
-        this.bot._buildRow(
-          { text: '⚡ Кілометри', data: 'analysis_km' },
-          { text: '⚡ Темп', data: 'analysis_pace' }
-        ),
-        this.bot._buildRow(
-          { text: '◀️ Меню', data: 'menu' }
-        )
-      ];
-
-      await this.bot.editWithButtons(chatId, messageId, text, buttons);
+      await this.bot.edit(chatId, messageId, text);
     } catch (err) {
       console.error('Analyze error:', err);
       await this.bot.answerCallback(q.id, '❌ Помилка');
