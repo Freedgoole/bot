@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+// Strava Trainer Bot - Test Deploy
 const Bot = require('./bot/Bot');
 const StravaClient = require('./strava/StravaClient');
 const Trainer = require('./ai/Trainer');
