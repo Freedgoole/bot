@@ -60,34 +60,68 @@ module.exports = async (req, res) => {
         const messageId = callback_query.message.message_id;
         const data = callback_query.data;
 
+        const callbackMap = {
+          'menu': 'menu',
+          'stats': 'stats',
+          'progress': 'progress',
+          'compare': 'compare',
+          'week': 'week',
+          'advice': 'advice',
+          'analyze': 'analyze',
+          'analysis_drift': 'analysis_drift',
+          'analysis_pace': 'analysis_pace',
+          'analysis_full': 'analysis_full',
+          'chart_week': 'chart_week',
+          'chart_pace': 'chart_pace',
+          'chart_hr': 'chart_hr',
+          '⚡ Аналіз': 'analyze',
+          '📊 Статистика': 'stats',
+          '📈 Прогрес': 'progress',
+          '🔄 Порівняти': 'compare',
+          '📅 Тиждень': 'week',
+          '💡 Поради': 'advice',
+          '💓 Дрейф': 'analysis_drift',
+          '⚡ Темп': 'analysis_pace',
+          '📊 Деталі': 'analysis_full',
+          '◀️ Меню': 'menu',
+          '📏 km/тиж': 'chart_week',
+          '⚡ Темп': 'chart_pace',
+          '💓 Пульс': 'chart_hr'
+        };
+
+        const action = callbackMap[data] || data;
+        console.log('Mapped action:', action);
+
         try {
-          console.log('Executing callback:', data);
-          if (data === 'menu') {
+          console.log('Executing callback:', action);
+          if (action === 'menu') {
             await handler.showMenu({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'stats') {
+          } else if (action === 'stats') {
             await handler.cmdStatsCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'progress') {
+          } else if (action === 'progress') {
             await handler.cmdProgressCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'compare') {
+          } else if (action === 'compare') {
             await handler.cmdCompareCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'week') {
+          } else if (action === 'week') {
             await handler.cmdWeekCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'advice') {
+          } else if (action === 'advice') {
             await handler.cmdAdviceCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'analyze') {
+          } else if (action === 'analyze') {
             await handler.cmdAnalyzeCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'analysis_drift') {
+          } else if (action === 'analysis_drift') {
             await handler.showDriftAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'analysis_pace') {
+          } else if (action === 'analysis_pace') {
             await handler.showPaceAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'chart_week') {
+          } else if (action === 'chart_week') {
             await handler.showWeeklyChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'chart_pace') {
+          } else if (action === 'chart_pace') {
             await handler.showPaceChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
-          } else if (data === 'chart_hr') {
+          } else if (action === 'chart_hr') {
             await handler.showHrChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
+          } else {
+            console.log('Unknown callback:', data);
           }
-          console.log('Callback done:', data);
+          console.log('Callback done:', action);
         } catch (err) {
           console.error('Callback error:', err.message, err.stack);
           try {
