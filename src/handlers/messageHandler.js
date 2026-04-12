@@ -5,11 +5,15 @@ const Comparison = require('../services/Comparison');
 class MessageHandler {
   constructor(services) {
     this.strava = services.strava;
-    this.trainer = services.trainer;
+    this._trainer = services.trainer;
     this.bot = services.bot;
     this.progress = new ProgressTracker();
     this.charts = new Charts();
     this.comparison = new Comparison();
+  }
+
+  get trainer() {
+    return this._trainer;
   }
 
   registerCommands() {
@@ -18,7 +22,9 @@ class MessageHandler {
   }
 
   async cmdStart(msg) {
-    const chatId = msg.chat.id;
+    console.log('cmdStart called, msg:', JSON.stringify(msg).slice(0, 100));
+    const chatId = msg.chat?.id;
+    console.log('chatId:', chatId);
     await this.bot.sendWithButtons(chatId, `
 🏃 <b>Привіт, атлет!</b>
 
@@ -27,6 +33,7 @@ class MessageHandler {
 
 Вибери що хочеш зробити:
     `, this.bot.mainMenu());
+    console.log('Menu sent!');
   }
 
   async cmdHelp(msg) {
@@ -58,7 +65,8 @@ class MessageHandler {
 
       const activity = activities[0];
       await this.progress.trackActivity(activity);
-      const analysis = await this.trainer.analyzeActivity(activity);
+      const analysis = await this.withTimeout(this.trainer.analyzeActivity(activity), 15000)
+        .catch(() => '🏃 Аналіз тимчасово недоступний. Спробуй пізніше!');
 
       const zone = this.trainer.getPaceZone(activity.pace);
       
@@ -685,6 +693,15 @@ ${consistency}`;
     else if (sec >= 270) bars = '▓▓▓░░';
     else bars = '▓▓▓▓▓';
     return `\`${bars}\``;
+  }
+
+  withTimeout(promise, ms = 10000) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('⏱️ Час очікування вичерпано')), ms)
+      )
+    ]);
   }
 }
 

@@ -3,13 +3,21 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class Trainer {
   constructor() {
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash',
-      systemInstruction: this.getSystemPrompt()
-    });
+    this._genAI = null;
+    this._model = null;
     this.lastRequest = 0;
     this.minDelay = 2000;
+  }
+
+  get model() {
+    if (!this._model) {
+      this._genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this._model = this._genAI.getGenerativeModel({ 
+      model: 'gemini-3-flash-preview',
+      systemInstruction: this.getSystemPrompt()
+    });
+    }
+    return this._model;
   }
 
   async waitForRateLimit() {
