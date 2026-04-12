@@ -8,6 +8,17 @@ class Trainer {
       model: 'gemini-2.0-flash',
       systemInstruction: this.getSystemPrompt()
     });
+    this.lastRequest = 0;
+    this.minDelay = 2000;
+  }
+
+  async waitForRateLimit() {
+    const now = Date.now();
+    const elapsed = now - this.lastRequest;
+    if (elapsed < this.minDelay) {
+      await new Promise(r => setTimeout(r, this.minDelay - elapsed));
+    }
+    this.lastRequest = Date.now();
   }
 
   getSystemPrompt() {
@@ -25,6 +36,7 @@ class Trainer {
   }
 
   async analyzeActivity(activity, history = []) {
+    await this.waitForRateLimit();
     const prompt = this.buildActivityPrompt(activity, history);
     try {
       const result = await this.model.generateContent(prompt);
@@ -36,6 +48,7 @@ class Trainer {
   }
 
   async generateAdvice(athleteData, recentActivities) {
+    await this.waitForRateLimit();
     const prompt = this.buildAdvicePrompt(athleteData, recentActivities);
     try {
       const result = await this.model.generateContent(prompt);
@@ -47,6 +60,7 @@ class Trainer {
   }
 
   async generateWeeklySummary(activities) {
+    await this.waitForRateLimit();
     const prompt = this.buildWeeklyPrompt(activities);
     try {
       const result = await this.model.generateContent(prompt);
