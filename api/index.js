@@ -79,6 +79,7 @@ module.exports = async (req, res) => {
 
       if (commands[command]) {
         await commands[command]();
+        return res.status(200).send('OK');
       }
     }
 

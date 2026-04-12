@@ -8,75 +8,51 @@ const MessageHandler = require('./handlers/messageHandler');
 const bot = new Bot();
 const strava = new StravaClient();
 const trainer = new Trainer();
+const handler = new MessageHandler({ bot, strava, trainer });
 
-const services = { bot, strava, trainer };
-const handler = new MessageHandler(services);
-
-if (process.env.WEBHOOK_URL) {
-  bot.setWebhook(process.env.WEBHOOK_URL);
-  console.log('Webhook mode:', process.env.WEBHOOK_URL);
-} else {
+if (!process.env.WEBHOOK_URL) {
   bot.client.on('message', async (msg) => {
     if (!msg.text || !msg.text.startsWith('/')) return;
-    const command = msg.text.slice(1).split(' ')[0];
-    console.log('Command:', command);
+    
+    const cmd = msg.text.slice(1).split(' ')[0];
+    console.log('Command:', cmd);
     
     try {
-      if (command === 'start') await handler.cmdStart(msg);
-      else if (command === 'help') await handler.cmdHelp(msg);
-      else if (command === 'analyze') await handler.cmdAnalyze(msg);
-      else if (command === 'today') await handler.cmdToday(msg);
-      else if (command === 'stats') await handler.cmdStats(msg);
-      else if (command === 'week') await handler.cmdWeek(msg);
-      else if (command === 'advice') await handler.cmdAdvice(msg);
-      else if (command === 'progress') await handler.cmdProgress(msg);
-      else if (command === 'compare') await handler.cmdCompare(msg);
-      else if (command === 'chart') await handler.cmdChart(msg);
-      else if (command === 'pb') await handler.cmdPersonalBest(msg);
-      else if (command === 'streak') await handler.cmdStreak(msg);
+      if (cmd === 'start') await handler.cmdStart(msg);
+      else if (cmd === 'help') await handler.cmdHelp(msg);
+      else if (cmd === 'analyze') await handler.cmdAnalyze(msg);
+      else if (cmd === 'today') await handler.cmdToday(msg);
+      else if (cmd === 'stats') await handler.cmdStats(msg);
+      else if (cmd === 'week') await handler.cmdWeek(msg);
+      else if (cmd === 'advice') await handler.cmdAdvice(msg);
+      else if (cmd === 'progress') await handler.cmdProgress(msg);
+      else if (cmd === 'compare') await handler.cmdCompare(msg);
     } catch (err) {
-      console.error('Command error:', err);
-      bot.send(msg.chat.id, '❌ Помилка: ' + err.message);
+      console.error('Error:', err.message);
+      bot.send(msg.chat.id, '❌ Помилка');
     }
   });
 
   bot.client.on('callback_query', async (query) => {
     const { data, message } = query;
+    bot.answerCallback(query.id).catch(() => {});
+    
     const chatId = message.chat.id;
-    const messageId = message.message_id;
+    const msg = { chat: { id: chatId } };
     
     try {
-      await handler.bot.answerCallback(query.id);
-      if (data === 'menu') await handler.showMenu(query);
-      else if (data === 'stats') await handler.cmdStatsCallback(query);
-      else if (data === 'progress') await handler.cmdProgressCallback(query);
-      else if (data === 'compare') await handler.cmdCompareCallback(query);
-      else if (data === 'week') await handler.cmdWeekCallback(query);
-      else if (data === 'advice') await handler.cmdAdviceCallback(query);
-      else if (data === 'analyze') await handler.cmdAnalyzeCallback(query);
-      else if (data === 'analysis_pace') await handler.showPaceAnalysis(query);
-      else if (data === 'analysis_km') await handler.showKmAnalysis(query);
-      else if (data === 'chart_week') await handler.showWeeklyChart(query);
-      else if (data === 'chart_pace') await handler.showPaceChart(query);
-      else if (data === 'chart_hr') await handler.showHrChart(query);
+      if (data === 'menu') await handler.cmdStart(msg);
+      else if (data === 'stats') await handler.cmdStats(msg);
+      else if (data === 'progress') await handler.cmdProgress(msg);
+      else if (data === 'compare') await handler.cmdCompare(msg);
+      else if (data === 'week') await handler.cmdWeek(msg);
+      else if (data === 'advice') await handler.cmdAdvice(msg);
+      else if (data === 'analyze') await handler.cmdAnalyze(msg);
     } catch (err) {
-      console.error('Callback error:', err);
+      console.error('Callback error:', err.message);
     }
   });
 
   bot.client.startPolling();
-  console.log('Polling mode started...');
+  console.log('Bot started!');
 }
-
-module.exports = async (req, res) => {
-  if (req.method !== 'POST') {
-    return res.status(200).send('OK');
-  }
-
-  const { message } = req.body;
-  if (!message?.text) {
-    return res.status(200).send('OK');
-  }
-
-  return res.status(200).send('OK');
-};
