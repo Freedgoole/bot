@@ -64,11 +64,20 @@ class MessageHandler {
       
       let splitsText = '';
       if (activity.splits && activity.splits.length > 0) {
-        splitsText = activity.splits.map(s => {
+        const isKmSplits = activity.splits[0].km !== undefined;
+        
+        const splitsLines = activity.splits.map((s, i) => {
           const sZone = this.trainer.getPaceZone(s.pace);
-          return `${s.km}км: <b>${s.pace}</b> ${sZone}`;
-        }).join(' | ');
-        splitsText = `\n\n⚡ <b>РОЗБИВКА:</b>\n${splitsText}`;
+          const label = isKmSplits ? `км ${s.km}` : `частина ${i + 1}`;
+          const bar = this.getPaceBar(s.pace);
+          return `🏃 ${label}: <b>${s.pace}</b> ${sZone} ${bar}`;
+        }).join('\n');
+
+        const paces = activity.splits.map(s => this.parsePace(s.pace));
+        const minPace = this.formatPace(Math.min(...paces));
+        const maxPace = this.formatPace(Math.max(...paces));
+        
+        splitsText = `\n\n⚡ <b>ТЕМПИ:</b>\n${splitsLines}\n\n📊 мін: ${minPace} | макс: ${maxPace}`;
       }
 
       const text = `🏃 <b>${activity.name}</b>
@@ -106,11 +115,20 @@ ${analysis}`;
       
       let splitsText = '';
       if (activity.splits && activity.splits.length > 0) {
-        splitsText = activity.splits.map(s => {
+        const isKmSplits = activity.splits[0].km !== undefined;
+        
+        const splitsLines = activity.splits.map((s, i) => {
           const sZone = this.trainer.getPaceZone(s.pace);
-          return `${s.km}км: <b>${s.pace}</b> ${sZone}`;
-        }).join(' | ');
-        splitsText = `\n\n⚡ <b>РОЗБИВКА:</b>\n${splitsText}`;
+          const label = isKmSplits ? `км ${s.km}` : `частина ${i + 1}`;
+          const bar = this.getPaceBar(s.pace);
+          return `🏃 ${label}: <b>${s.pace}</b> ${sZone} ${bar}`;
+        }).join('\n');
+
+        const paces = activity.splits.map(s => this.parsePace(s.pace));
+        const minPace = this.formatPace(Math.min(...paces));
+        const maxPace = this.formatPace(Math.max(...paces));
+        
+        splitsText = `\n\n⚡ <b>ТЕМПИ:</b>\n${splitsLines}\n\n📊 мін: ${minPace} | макс: ${maxPace}`;
       }
 
       const text = `🏃 <b>${activity.name}</b>
@@ -260,9 +278,11 @@ ${consistency}`;
         response += `  📏 ${a.distance} км | 🏃 ${a.pace}/км | ${zone}\n`;
         
         if (a.splits && a.splits.length > 0) {
-          const splitsText = a.splits.map(s => {
+          const isKmSplits = a.splits[0].km !== undefined;
+          const splitsText = a.splits.map((s, i) => {
             const sZone = this.trainer.getPaceZone(s.pace);
-            return `${s.km}км: <b>${s.pace}</b> ${sZone}`;
+            const label = isKmSplits ? `км ${s.km}` : `ч ${i + 1}`;
+            return `${label}: <b>${s.pace}</b> ${sZone}`;
           }).join(' | ');
           response += `  ⚡ ${splitsText}\n`;
         }
@@ -654,6 +674,17 @@ ${consistency}`;
     const m = Math.floor(seconds / 60);
     const s = Math.round(seconds % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
+  getPaceBar(pace) {
+    const sec = this.parsePace(pace);
+    let bars = '';
+    if (sec >= 360) bars = '░░░░░';
+    else if (sec >= 330) bars = '▓░░░░';
+    else if (sec >= 300) bars = '▓▓░░░';
+    else if (sec >= 270) bars = '▓▓▓░░';
+    else bars = '▓▓▓▓▓';
+    return `\`${bars}\``;
   }
 }
 
