@@ -22,18 +22,18 @@ if (process.env.WEBHOOK_URL) {
     console.log('Command:', command);
     
     try {
-      if (command === 'start') await handler.cmdStart(msg.chat);
-      else if (command === 'help') await handler.cmdHelp(msg.chat);
-      else if (command === 'analyze') await handler.cmdAnalyze(msg.chat);
-      else if (command === 'today') await handler.cmdToday(msg.chat);
-      else if (command === 'stats') await handler.cmdStats(msg.chat);
-      else if (command === 'week') await handler.cmdWeek(msg.chat);
-      else if (command === 'advice') await handler.cmdAdvice(msg.chat);
-      else if (command === 'progress') await handler.cmdProgress(msg.chat);
-      else if (command === 'compare') await handler.cmdCompare(msg.chat);
-      else if (command === 'chart') await handler.cmdChart(msg.chat);
-      else if (command === 'pb') await handler.cmdPersonalBest(msg.chat);
-      else if (command === 'streak') await handler.cmdStreak(msg.chat);
+      if (command === 'start') await handler.cmdStart(msg);
+      else if (command === 'help') await handler.cmdHelp(msg);
+      else if (command === 'analyze') await handler.cmdAnalyze(msg);
+      else if (command === 'today') await handler.cmdToday(msg);
+      else if (command === 'stats') await handler.cmdStats(msg);
+      else if (command === 'week') await handler.cmdWeek(msg);
+      else if (command === 'advice') await handler.cmdAdvice(msg);
+      else if (command === 'progress') await handler.cmdProgress(msg);
+      else if (command === 'compare') await handler.cmdCompare(msg);
+      else if (command === 'chart') await handler.cmdChart(msg);
+      else if (command === 'pb') await handler.cmdPersonalBest(msg);
+      else if (command === 'streak') await handler.cmdStreak(msg);
     } catch (err) {
       console.error('Command error:', err);
       bot.send(msg.chat.id, '❌ Помилка: ' + err.message);
