@@ -46,6 +46,16 @@ class Bot {
     return this.client.answerCallbackQuery(queryId, { text });
   }
 
+  onCommand(command, callback) {
+    if (!this.client) return;
+    this.client.onText(new RegExp(`^/(${command})`), callback);
+  }
+
+  onText(pattern, callback) {
+    if (!this.client) return;
+    this.client.onText(pattern, callback);
+  }
+
   _buildKeyboard(buttons) {
     if (!Array.isArray(buttons)) return [];
     return buttons.map(row => 
