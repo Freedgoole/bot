@@ -13,34 +13,8 @@ class MessageHandler {
   }
 
   registerCommands() {
-    this.bot.onCommand('start', (msg) => this.cmdStart(msg));
-    this.bot.onCommand('help', (msg) => this.cmdHelp(msg));
-    this.bot.onCommand('analyze', (msg) => this.cmdAnalyze(msg));
-    this.bot.onCommand('today', (msg) => this.cmdToday(msg));
-    this.bot.onCommand('stats', (msg) => this.cmdStats(msg));
-    this.bot.onCommand('week', (msg) => this.cmdWeek(msg));
-    this.bot.onCommand('advice', (msg) => this.cmdAdvice(msg));
-    this.bot.onCommand('progress', (msg) => this.cmdProgress(msg));
-    this.bot.onCommand('compare', (msg) => this.cmdCompare(msg));
-    this.bot.onCommand('chart', (msg) => this.cmdChart(msg));
-    this.bot.onCommand('pb', (msg) => this.cmdPersonalBest(msg));
-    this.bot.onCommand('streak', (msg) => this.cmdStreak(msg));
-
-    this.bot.onCallback('menu', (q) => this.showMenu(q));
-    this.bot.onCallback('stats', (q) => this.cmdStatsCallback(q));
-    this.bot.onCallback('progress', (q) => this.cmdProgressCallback(q));
-    this.bot.onCallback('compare', (q) => this.cmdCompareCallback(q));
-    this.bot.onCallback('week', (q) => this.cmdWeekCallback(q));
-    this.bot.onCallback('advice', (q) => this.cmdAdviceCallback(q));
-    this.bot.onCallback('analyze', (q) => this.cmdAnalyzeCallback(q));
-    this.bot.onCallback('analysis_drift', (q) => this.showDriftAnalysis(q));
-    this.bot.onCallback('analysis_pace', (q) => this.showPaceAnalysis(q));
-    this.bot.onCallback('analysis_full', (q) => this.cmdAnalyzeCallback(q));
-    this.bot.onCallback('chart_week', (q) => this.showWeeklyChart(q));
-    this.bot.onCallback('chart_pace', (q) => this.showPaceChart(q));
-    this.bot.onCallback('chart_hr', (q) => this.showHrChart(q));
-
-    this.bot.onText(/./, (msg) => this.handleText(msg));
+    // Commands registered via API, not needed here
+    console.log('MessageHandler ready (webhook mode)');
   }
 
   async cmdStart(msg) {
