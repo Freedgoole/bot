@@ -4,18 +4,26 @@ const path = require('path');
 class JsonStore {
   constructor(filename = 'data.json') {
     this.filepath = path.join(process.cwd(), 'data', filename);
+    this.enabled = true;
   }
 
   async ensureDir() {
+    if (!this.enabled) return;
     const dir = path.dirname(this.filepath);
     try {
       await fs.access(dir);
     } catch {
-      await fs.mkdir(dir, { recursive: true });
+      try {
+        await fs.mkdir(dir, { recursive: true });
+      } catch {
+        this.enabled = false;
+        console.log('JsonStore disabled: cannot create directory');
+      }
     }
   }
 
   async read() {
+    if (!this.enabled) return {};
     try {
       await this.ensureDir();
       const data = await fs.readFile(this.filepath, 'utf8');
@@ -26,8 +34,13 @@ class JsonStore {
   }
 
   async write(data) {
-    await this.ensureDir();
-    await fs.writeFile(this.filepath, JSON.stringify(data, null, 2));
+    if (!this.enabled) return;
+    try {
+      await this.ensureDir();
+      await fs.writeFile(this.filepath, JSON.stringify(data, null, 2));
+    } catch (err) {
+      console.log('JsonStore write error:', err.message);
+    }
   }
 
   async get(key) {
