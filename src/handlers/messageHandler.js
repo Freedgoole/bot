@@ -22,9 +22,7 @@ class MessageHandler {
   }
 
   async cmdStart(msg) {
-    console.log('cmdStart called, msg:', JSON.stringify(msg).slice(0, 100));
     const chatId = msg.chat?.id;
-    console.log('chatId:', chatId);
     await this.bot.sendWithButtons(chatId, `
 🏃 <b>Привіт, атлет!</b>
 
@@ -33,7 +31,6 @@ class MessageHandler {
 
 Вибери що хочеш зробити:
     `, this.bot.mainMenu());
-    console.log('Menu sent!');
   }
 
   async cmdHelp(msg) {
