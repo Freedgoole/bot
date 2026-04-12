@@ -41,6 +41,15 @@ class Bot {
     });
   }
 
+  edit(chatId, messageId, text, options = {}) {
+    if (!this.client) return Promise.resolve();
+    return this.client.editMessageText(text, {
+      chat_id: chatId,
+      message_id: messageId,
+      parse_mode: 'HTML'
+    });
+  }
+
   answerCallback(queryId, text = '') {
     if (!this.client) return Promise.resolve();
     return this.client.answerCallbackQuery(queryId, { text });
