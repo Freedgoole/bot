@@ -3,11 +3,10 @@ const StravaClient = require('../src/strava/StravaClient');
 const Trainer = require('../src/ai/Trainer');
 const MessageHandler = require('../src/handlers/messageHandler');
 
-let bot, strava, trainer, handler;
-let initialized = false;
+let bot, strava, trainer, handler, services;
 
 function init() {
-  if (initialized) return;
+  if (handler) return;
   
   try {
     bot = new Bot();
@@ -16,8 +15,6 @@ function init() {
     services = { bot, strava, trainer };
     handler = new MessageHandler(services);
     handler.registerCommands();
-    initialized = true;
-    console.log('Bot initialized');
   } catch (err) {
     console.error('Init error:', err);
   }
@@ -38,16 +35,24 @@ module.exports = async (req, res) => {
       const messageId = callback_query.message.message_id;
       const data = callback_query.data;
 
-      for (const [pattern, callback] of Object.entries(getCallbacks())) {
-        if (data === pattern || data.startsWith(pattern)) {
-          await callback({ 
-            id: callback_query.id,
-            data,
-            message: { 
-              chat: { id: chatId }, 
-              message_id: messageId 
-            }
-          });
+      const callbacks = {
+        menu: () => handler.showMenu({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        stats: () => handler.cmdStatsCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        progress: () => handler.cmdProgressCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        compare: () => handler.cmdCompareCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        week: () => handler.cmdWeekCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        advice: () => handler.cmdAdviceCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        analyze: () => handler.cmdAnalyzeCallback({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        analysis_drift: () => handler.showDriftAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        analysis_pace: () => handler.showPaceAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        chart_week: () => handler.showWeeklyChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        chart_pace: () => handler.showPaceChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+        chart_hr: () => handler.showHrChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } }),
+      };
+
+      for (const [key, callback] of Object.entries(callbacks)) {
+        if (data === key) {
+          await callback();
           return res.status(200).send('OK');
         }
       }
@@ -82,21 +87,3 @@ module.exports = async (req, res) => {
 
   return res.status(405).send('Method not allowed');
 };
-
-function getCallbacks() {
-  return {
-    menu: (q) => handler.showMenu(q),
-    stats: (q) => handler.cmdStatsCallback(q),
-    progress: (q) => handler.cmdProgressCallback(q),
-    compare: (q) => handler.cmdCompareCallback(q),
-    week: (q) => handler.cmdWeekCallback(q),
-    advice: (q) => handler.cmdAdviceCallback(q),
-    analyze: (q) => handler.cmdAnalyzeCallback(q),
-    analysis_drift: (q) => handler.showDriftAnalysis(q),
-    analysis_pace: (q) => handler.showPaceAnalysis(q),
-    analysis_full: (q) => handler.cmdAnalyzeCallback(q),
-    chart_week: (q) => handler.showWeeklyChart(q),
-    chart_pace: (q) => handler.showPaceChart(q),
-    chart_hr: (q) => handler.showHrChart(q),
-  };
-}
