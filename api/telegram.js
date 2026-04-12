@@ -1,24 +1,26 @@
-require('dotenv').config();
-
 const Bot = require('../src/bot/Bot');
 const StravaClient = require('../src/strava/StravaClient');
 const Trainer = require('../src/ai/Trainer');
 const MessageHandler = require('../src/handlers/messageHandler');
 
-const bot = new Bot();
-const strava = new StravaClient();
-const trainer = new Trainer();
-
-const services = { bot, strava, trainer };
-const handler = new MessageHandler(services);
-
+let bot, strava, trainer, handler;
 let initialized = false;
 
 function init() {
   if (initialized) return;
-  handler.registerCommands();
-  initialized = true;
-  console.log('Bot initialized');
+  
+  try {
+    bot = new Bot();
+    strava = new StravaClient();
+    trainer = new Trainer();
+    services = { bot, strava, trainer };
+    handler = new MessageHandler(services);
+    handler.registerCommands();
+    initialized = true;
+    console.log('Bot initialized');
+  } catch (err) {
+    console.error('Init error:', err);
+  }
 }
 
 module.exports = async (req, res) => {
