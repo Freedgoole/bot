@@ -10,6 +10,17 @@ class StravaClient {
       clientSecret: process.env.STRAVA_CLIENT_SECRET
     };
     this.baseUrl = 'https://www.strava.com/api/v3';
+    this.lastRequest = 0;
+    this.minDelay = 2000;
+  }
+
+  async waitForRateLimit() {
+    const now = Date.now();
+    const elapsed = now - this.lastRequest;
+    if (elapsed < this.minDelay) {
+      await new Promise(r => setTimeout(r, this.minDelay - elapsed));
+    }
+    this.lastRequest = Date.now();
   }
 
   async refreshToken() {
@@ -25,6 +36,8 @@ class StravaClient {
   }
 
   async request(endpoint, params = {}, retry = true) {
+    await this.waitForRateLimit();
+    
     try {
       const res = await axios.get(`${this.baseUrl}${endpoint}`, {
         headers: { Authorization: `Bearer ${this.config.accessToken}` },
@@ -35,6 +48,9 @@ class StravaClient {
       if (err.response?.status === 401 && retry) {
         await this.refreshToken();
         return this.request(endpoint, params, false);
+      }
+      if (err.response?.status === 429) {
+        throw new Error('Strava rate limit. Почекай хвилину і спробуй знову.');
       }
       throw err;
     }

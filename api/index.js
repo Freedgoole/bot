@@ -61,19 +61,10 @@ module.exports = async (req, res) => {
     if (message?.text?.startsWith('/')) {
       const chatId = message.chat.id;
       const command = message.text.slice(1).split(' ')[0];
-      console.log('Command:', command, 'chatId:', chatId);
 
       const commands = {
-        start: async () => {
-          console.log('Executing cmdStart...');
-          await handler.cmdStart({ chat: { id: chatId } });
-          console.log('cmdStart done');
-        },
-        help: async () => {
-          console.log('Executing cmdHelp...');
-          await handler.cmdHelp({ chat: { id: chatId } });
-          console.log('cmdHelp done');
-        },
+        start: () => handler.cmdStart({ chat: { id: chatId } }),
+        help: () => handler.cmdHelp({ chat: { id: chatId } }),
         analyze: () => handler.cmdAnalyze({ chat: { id: chatId } }),
         today: () => handler.cmdToday({ chat: { id: chatId } }),
         stats: () => handler.cmdStats({ chat: { id: chatId } }),
