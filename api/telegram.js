@@ -68,7 +68,7 @@ module.exports = async (req, res) => {
           'week': 'week',
           'advice': 'advice',
           'analyze': 'analyze',
-          'analysis_drift': 'analysis_drift',
+          'analysis_km': 'analysis_km',
           'analysis_pace': 'analysis_pace',
           'analysis_full': 'analysis_full',
           'chart_week': 'chart_week',
@@ -112,6 +112,8 @@ module.exports = async (req, res) => {
             await handler.showDriftAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
           } else if (action === 'analysis_pace') {
             await handler.showPaceAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
+          } else if (action === 'analysis_km') {
+            await handler.showKmAnalysis({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
           } else if (action === 'chart_week') {
             await handler.showWeeklyChart({ id: callback_query.id, data, message: { chat: { id: chatId }, message_id: messageId } });
           } else if (action === 'chart_pace') {

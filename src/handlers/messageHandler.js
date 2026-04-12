@@ -62,19 +62,19 @@ class MessageHandler {
 
       const buttons = [
         this.bot._buildRow(
-          { text: '💓 Дрейф', data: 'analysis_drift' },
+          { text: '⚡ Кілометри', data: 'analysis_km' },
           { text: '⚡ Темп', data: 'analysis_pace' }
         ),
         this.bot._buildRow(
-          { text: '📊 Деталі', data: 'analysis_full' },
           { text: '◀️ Меню', data: 'menu' }
         )
       ];
 
+      const zone = this.trainer.getPaceZone(activity.pace);
       const text = `🏃 <b>${activity.name}</b>
 📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
 📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
-💓 ${activity.avgHeartrate || '?'} bpm${activity.hrDrift ? ` | 📊 дрейф: ${activity.hrDrift}%` : ''}
+⚡ Зона: ${zone}
 
 ━━━━━━━━━━━━━━━
 ${analysis}`;
@@ -102,20 +102,12 @@ ${analysis}`;
       await this.progress.trackActivity(activity);
       const analysis = await this.trainer.analyzeActivity(activity);
 
-      const buttons = [
-        this.bot._buildRow(
-          { text: '💓 Дрейф', data: 'analysis_drift' },
-          { text: '⚡ Темп', data: 'analysis_pace' }
-        ),
-        this.bot._buildRow(
-          { text: '◀️ Меню', data: 'menu' }
-        )
-      ];
+      const zone = this.trainer.getPaceZone(activity.pace);
 
       const text = `🏃 <b>${activity.name}</b>
 📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
 📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
-💓 ${activity.avgHeartrate || '?'} bpm${activity.hrDrift ? ` | 📊 дрейф: ${activity.hrDrift}%` : ''}
+⚡ Зона: ${zone}
 
 ━━━━━━━━━━━━━━━
 ${analysis}`;
@@ -127,66 +119,43 @@ ${analysis}`;
     }
   }
 
-  async showDriftAnalysis(q) {
+  async showKmAnalysis(q) {
     const chatId = q.message.chat.id;
     const messageId = q.message.message_id;
     await this.bot.answerCallback(q.id);
 
     try {
-      const activities = await this.strava.getRecentActivities(5);
-      const runs = activities.filter(a => a.type === 'Run' && a.hrDrift);
+      const activities = await this.strava.getRecentActivities(1);
       const lastActivity = activities[0];
 
-      if (!lastActivity?.hrDrift) {
-        return this.bot.editWithButtons(chatId, messageId, '💓 <b>Аналіз дрейфу</b>\n\nНемає даних про пульс.', [
+      if (!lastActivity?.splits || lastActivity.splits.length === 0) {
+        return this.bot.editWithButtons(chatId, messageId, '⚡ <b>Аналіз кілометрів</b>\n\nНемає даних про спліти.', [
           this.bot._buildRow({ text: '◀️ Назад', data: 'analyze' })
         ]);
       }
 
-      const drift = lastActivity.hrDrift;
-      const laps = lastActivity.laps || [];
-      
-      let driftAnalysis = '';
-      if (laps.length >= 4) {
-        const mid = Math.floor(laps.length / 2);
-        const firstHalf = laps.slice(0, mid);
-        const secondHalf = laps.slice(mid);
-        
-        const avg1 = firstHalf.reduce((s, l) => s + (l.heartrate || 0), 0) / firstHalf.length;
-        const avg2 = secondHalf.reduce((s, l) => s + (l.heartrate || 0), 0) / secondHalf.length;
-        
-        driftAnalysis = `💓 Пульс 1-ша половина: <b>${Math.round(avg1)}</b> bpm
-💓 Пульс 2-га половина: <b>${Math.round(avg2)}</b> bpm
-📈 Різниця: <b>+${Math.round(avg2 - avg1)}</b> bpm`;
-      }
+      const splits = lastActivity.splits;
+      const zoneDist = this.trainer.getZoneDistribution(splits);
 
-      let status = '';
-      let recommendation = '';
-      if (drift < 5) {
-        status = '🌟 Чудова аеробна база!';
-        recommendation = 'Підтримуй темп і обсяги.';
-      } else if (drift < 8) {
-        status = '💪 Хороша аеробна база';
-        recommendation = 'Тренуйся в 2-й зоні частіше.';
-      } else if (drift < 12) {
-        status = '📊 Помірний дрейф';
-        recommendation = 'Знизь темп на 10-15 сек/км.';
-      } else {
-        status = '⚠️ Високий дрейф';
-        recommendation = 'Більше легких тренувань!';
-      }
+      let splitsText = splits.map(s => {
+        const zone = this.trainer.getPaceZone(s.pace);
+        return `км ${s.km}: <b>${s.pace}</b> ${zone}`;
+      }).join('\n');
 
-      const text = `💓 <b>АНАЛІЗ ДРЕЙФУ</b>
+      const text = `⚡ <b>РОЗБИВКА ПО КІЛОМЕТРАХ</b>
 
-📊 Дрейф: <b>${drift}%</b>
+<b>${lastActivity.distance} км @ ${lastActivity.pace}/км</b>
 
-${driftAnalysis}
+${splitsText}
 
 ━━━━━━━━━━━━━━━
 
-<b>${status}</b>
+<b>📊 РОЗПОДІЛ ЗОН:</b>
+${zoneDist}
 
-${recommendation}`;
+━━━━━━━━━━━━━━━
+🟢 Z1: > 6:00 | 🟢 Z2: 5:30-6:00
+🟡 Z3: 5:00-5:30 | 🟠 Z4: 4:30-5:00 | 🔴 Z5: < 4:30`;
 
       await this.bot.editWithButtons(chatId, messageId, text, [
         this.bot._buildRow(
@@ -195,7 +164,7 @@ ${recommendation}`;
         )
       ]);
     } catch (err) {
-      console.error('Drift error:', err);
+      console.error('Km analysis error:', err);
     }
   }
 
@@ -277,8 +246,18 @@ ${consistency}`;
       let response = `🏃 Сьогодні: ${todayActivities.length} тренування\n\n`;
       
       for (const a of todayActivities) {
+        const zone = this.trainer.getPaceZone(a.pace);
         response += `• ${a.name}\n`;
-        response += `  📏 ${a.distance} км | 🏃 ${a.pace}/км | 💓 ${a.avgHeartrate || '?'} bpm\n\n`;
+        response += `  📏 ${a.distance} км | 🏃 ${a.pace}/км | ${zone}\n`;
+        
+        if (a.splits && a.splits.length > 0) {
+          const splitsText = a.splits.map(s => {
+            const sZone = this.trainer.getPaceZone(s.pace);
+            return `${s.km}км: <b>${s.pace}</b> ${sZone}`;
+          }).join(' | ');
+          response += `  ⚡ ${splitsText}\n`;
+        }
+        response += '\n';
       }
 
       const analysis = await this.trainer.analyzeActivity(todayActivities[0]);
@@ -312,11 +291,6 @@ ${consistency}`;
       response += `⏱️ ${stats.totalTime} хв\n`;
       response += `🏃 Середній темп: ${stats.avgPace}/км\n`;
       response += `⚡ Найкращий темп: ${stats.bestPace}/км\n`;
-      
-      if (stats.avgHrDrift) {
-        response += `💓 Середній дрейф: ${stats.avgHrDrift}%\n`;
-      }
-      
       response += `\n📅 Регулярність: ${stats.consistency}%\n`;
 
       if (achievements.length > 0) {
@@ -462,8 +436,8 @@ ${consistency}`;
 
       const buttons = [
         this.bot._buildRow(
-          { text: '🔄 Оновити', data: 'compare' },
-          { text: '📊 Деталі', data: 'chart_week' }
+          { text: '⚡ Кілометри', data: 'analysis_km' },
+          { text: '⚡ Темп', data: 'analysis_pace' }
         ),
         this.bot._buildRow(
           { text: '◀️ Меню', data: 'menu' }
@@ -544,19 +518,20 @@ ${consistency}`;
 
     try {
       const activities = await this.strava.getRecentActivities(10);
-      const runs = activities.filter(a => a.type === 'Run' && a.avgHeartrate);
+      const runs = activities.filter(a => a.type === 'Run');
 
       const zones = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 };
       runs.forEach(a => {
-        const hr = a.avgHeartrate;
-        if (hr < 120) zones.Z1 += a.distance;
-        else if (hr < 140) zones.Z2 += a.distance;
-        else if (hr < 160) zones.Z3 += a.distance;
-        else if (hr < 175) zones.Z4 += a.distance;
+        const pace = a.pace || '0:00';
+        const sec = this.parsePace(pace);
+        if (sec >= 360) zones.Z1 += a.distance;
+        else if (sec >= 330) zones.Z2 += a.distance;
+        else if (sec >= 300) zones.Z3 += a.distance;
+        else if (sec >= 270) zones.Z4 += a.distance;
         else zones.Z5 += a.distance;
       });
 
-      const chart = this.charts.heartRateZones(zones);
+      const chart = this.charts.paceZonesChart(zones);
 
       await this.bot.editWithButtons(chatId, messageId, chart, [
         this.bot._buildRow(
@@ -565,7 +540,7 @@ ${consistency}`;
         )
       ]);
     } catch (err) {
-      console.error('HR chart error:', err);
+      console.error('Pace zones chart error:', err);
     }
   }
 

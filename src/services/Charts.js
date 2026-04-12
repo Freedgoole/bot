@@ -97,11 +97,16 @@ class Charts {
   }
 
   heartRateZones(zones) {
+    return this.paceZonesChart(zones);
+  }
+
+  paceZonesChart(zones) {
     const total = Object.values(zones).reduce((s, v) => s + v, 0) || 1;
     const maxWidth = 20;
     
     const zoneNames = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
-    const emojis = ['😴', '🚶', '🏃', '🏃💨', '🔥'];
+    const zoneColors = ['🟢', '🟢', '🟡', '🟠', '🔴'];
+    const zoneRanges = ['> 6:00', '5:30-6:00', '5:00-5:30', '4:30-5:00', '< 4:30'];
     
     let chart = '\n';
     
@@ -112,10 +117,10 @@ class Charts {
       const bars = Math.round((km / total) * maxWidth);
       const bar = '█'.repeat(bars) + '░'.repeat(maxWidth - bars);
       
-      chart += `${emojis[i]} ${zone} ${bar} ${km.toFixed(1)}km (${pct}%)\n`;
+      chart += `${zoneColors[i]} ${zone} ${bar} ${km.toFixed(1)}km (${pct}%)\n`;
     }
 
-    return `💓 Час у зонах:${chart}`;
+    return `⚡ Зони темпу:\n\nЗона | Діапазон\n${chart}\n🟢 Z1-Z2: відновлення | 🟡 Z3: темп | 🟠 Z4: поріг | 🔴 Z5: VO2max`;
   }
 
   comparisonBar(current, previous, label = 'km') {
