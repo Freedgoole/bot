@@ -23,24 +23,18 @@ class MessageHandler {
 
   async cmdStart(msg) {
     const chatId = msg.chat?.id;
-    
     const text = `🏃 <b>Привіт, атлет!</b>
 
 Я твій персональний AI-тренер.
 Підключений до Strava.
 
-Вибери що хочеш зробити:`;
+Вибери що хочеш зробити:
+
+📊 /stats - статистика
+⚡ /analyze - аналіз
+📈 /progress - прогрес`;
     
-    await this.bot.send(chatId, text, {
-      parse_mode: 'HTML',
-      reply_markup: JSON.stringify({
-        inline_keyboard: [
-          [{text: '📊 Статистика', callback_data: 'stats'}, {text: '📈 Прогрес', callback_data: 'progress'}],
-          [{text: '🔄 Порівняти', callback_data: 'compare'}, {text: '📅 Тиждень', callback_data: 'week'}],
-          [{text: '💡 Поради', callback_data: 'advice'}, {text: '⚡ Аналіз', callback_data: 'analyze'}]
-        ]
-      })
-    });
+    await this.bot.send(chatId, text, { parse_mode: 'HTML' });
   }
 
   async cmdHelp(msg) {
