@@ -112,6 +112,16 @@ ${analysis}`;
 ━━━━━━━━━━━━━━━
 ${analysis}`;
 
+      const buttons = [
+        this.bot._buildRow(
+          { text: '⚡ Кілометри', data: 'analysis_km' },
+          { text: '⚡ Темп', data: 'analysis_pace' }
+        ),
+        this.bot._buildRow(
+          { text: '◀️ Меню', data: 'menu' }
+        )
+      ];
+
       await this.bot.editWithButtons(chatId, messageId, text, buttons);
     } catch (err) {
       console.error('Analyze error:', err);
