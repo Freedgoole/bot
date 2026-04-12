@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    { "source": "/api/telegram", "destination": "/api/telegram" }
+  ],
+  "env": {
+    "TELEGRAM_BOT_TOKEN": "@telegram-token",
+    "STRAVA_CLIENT_ID": "@strava-client-id",
+    "STRAVA_CLIENT_SECRET": "@strava-client-secret",
+    "STRAVA_ACCESS_TOKEN": "@strava-access-token",
+    "STRAVA_REFRESH_TOKEN": "@strava-refresh-token",
+    "GEMINI_API_KEY": "@gemini-api-key"
+  }
+}

@@ -1,0 +1,702 @@
+const ProgressTracker = require('../services/ProgressTracker');
+const Charts = require('../services/Charts');
+const Comparison = require('../services/Comparison');
+
+class MessageHandler {
+  constructor(services) {
+    this.strava = services.strava;
+    this.trainer = services.trainer;
+    this.bot = services.bot;
+    this.progress = new ProgressTracker();
+    this.charts = new Charts();
+    this.comparison = new Comparison();
+  }
+
+  registerCommands() {
+    this.bot.onCommand('start', (msg) => this.cmdStart(msg));
+    this.bot.onCommand('help', (msg) => this.cmdHelp(msg));
+    this.bot.onCommand('analyze', (msg) => this.cmdAnalyze(msg));
+    this.bot.onCommand('today', (msg) => this.cmdToday(msg));
+    this.bot.onCommand('stats', (msg) => this.cmdStats(msg));
+    this.bot.onCommand('week', (msg) => this.cmdWeek(msg));
+    this.bot.onCommand('advice', (msg) => this.cmdAdvice(msg));
+    this.bot.onCommand('progress', (msg) => this.cmdProgress(msg));
+    this.bot.onCommand('compare', (msg) => this.cmdCompare(msg));
+    this.bot.onCommand('chart', (msg) => this.cmdChart(msg));
+    this.bot.onCommand('pb', (msg) => this.cmdPersonalBest(msg));
+    this.bot.onCommand('streak', (msg) => this.cmdStreak(msg));
+
+    this.bot.onCallback('menu', (q) => this.showMenu(q));
+    this.bot.onCallback('stats', (q) => this.cmdStatsCallback(q));
+    this.bot.onCallback('progress', (q) => this.cmdProgressCallback(q));
+    this.bot.onCallback('compare', (q) => this.cmdCompareCallback(q));
+    this.bot.onCallback('week', (q) => this.cmdWeekCallback(q));
+    this.bot.onCallback('advice', (q) => this.cmdAdviceCallback(q));
+    this.bot.onCallback('analyze', (q) => this.cmdAnalyzeCallback(q));
+    this.bot.onCallback('analysis_drift', (q) => this.showDriftAnalysis(q));
+    this.bot.onCallback('analysis_pace', (q) => this.showPaceAnalysis(q));
+    this.bot.onCallback('analysis_full', (q) => this.cmdAnalyzeCallback(q));
+    this.bot.onCallback('chart_week', (q) => this.showWeeklyChart(q));
+    this.bot.onCallback('chart_pace', (q) => this.showPaceChart(q));
+    this.bot.onCallback('chart_hr', (q) => this.showHrChart(q));
+
+    this.bot.onText(/./, (msg) => this.handleText(msg));
+  }
+
+  async cmdStart(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.sendWithButtons(chatId, `
+🏃 <b>Привіт, атлет!</b>
+
+Я твій персональний AI-тренер.
+Підключений до Strava.
+
+Вибери що хочеш зробити:
+    `, this.bot.mainMenu());
+  }
+
+  async cmdHelp(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, `
+📖 <b>Доступні команди:</b>
+
+📊 <b>/stats</b> — статистика за місяць
+📈 <b>/progress</b> — прогрес та графіки
+🔄 <b>/compare</b> — порівняння тижнів
+📅 <b>/week</b> — тижневий звіт
+⚡ <b>/analyze</b> — аналіз останнього
+💡 <b>/advice</b> — персональні поради
+📉 <b>/chart</b> — графіки
+🏆 <b>/pb</b> — особисті рекорди
+🔥 <b>/streak</b> — аналіз серії
+    `);
+  }
+
+  async cmdAnalyze(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '⚡ Аналізую останнє тренування...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(1);
+      if (activities.length === 0) {
+        return this.bot.send(chatId, '📭 Немає тренувань для аналізу.');
+      }
+
+      const activity = activities[0];
+      await this.progress.trackActivity(activity);
+      const analysis = await this.trainer.analyzeActivity(activity);
+
+      const buttons = [
+        this.bot._buildRow(
+          { text: '💓 Дрейф', data: 'analysis_drift' },
+          { text: '⚡ Темп', data: 'analysis_pace' }
+        ),
+        this.bot._buildRow(
+          { text: '📊 Деталі', data: 'analysis_full' },
+          { text: '◀️ Меню', data: 'menu' }
+        )
+      ];
+
+      const text = `🏃 <b>${activity.name}</b>
+📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
+📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
+💓 ${activity.avgHeartrate || '?'} bpm${activity.hrDrift ? ` | 📊 дрейф: ${activity.hrDrift}%` : ''}
+
+━━━━━━━━━━━━━━━
+${analysis}`;
+
+      await this.bot.sendWithButtons(chatId, text, buttons);
+    } catch (err) {
+      console.error('Analyze error:', err);
+      this.bot.send(chatId, '❌ Помилка аналізу.');
+    }
+  }
+
+  async cmdAnalyzeCallback(q) {
+    const chatId = q.message.chat.id;
+    const messageId = q.message.message_id;
+
+    await this.bot.answerCallback(q.id, 'Аналізую...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(1);
+      if (activities.length === 0) {
+        return this.bot.editWithButtons(chatId, messageId, '📭 Немає тренувань', this.bot.mainMenu());
+      }
+
+      const activity = activities[0];
+      await this.progress.trackActivity(activity);
+      const analysis = await this.trainer.analyzeActivity(activity);
+
+      const buttons = [
+        this.bot._buildRow(
+          { text: '💓 Дрейф', data: 'analysis_drift' },
+          { text: '⚡ Темп', data: 'analysis_pace' }
+        ),
+        this.bot._buildRow(
+          { text: '◀️ Меню', data: 'menu' }
+        )
+      ];
+
+      const text = `🏃 <b>${activity.name}</b>
+📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
+📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
+💓 ${activity.avgHeartrate || '?'} bpm${activity.hrDrift ? ` | 📊 дрейф: ${activity.hrDrift}%` : ''}
+
+━━━━━━━━━━━━━━━
+${analysis}`;
+
+      await this.bot.editWithButtons(chatId, messageId, text, buttons);
+    } catch (err) {
+      console.error('Analyze error:', err);
+      await this.bot.answerCallback(q.id, '❌ Помилка');
+    }
+  }
+
+  async showDriftAnalysis(q) {
+    const chatId = q.message.chat.id;
+    const messageId = q.message.message_id;
+    await this.bot.answerCallback(q.id);
+
+    try {
+      const activities = await this.strava.getRecentActivities(5);
+      const runs = activities.filter(a => a.type === 'Run' && a.hrDrift);
+      const lastActivity = activities[0];
+
+      if (!lastActivity?.hrDrift) {
+        return this.bot.editWithButtons(chatId, messageId, '💓 <b>Аналіз дрейфу</b>\n\nНемає даних про пульс.', [
+          this.bot._buildRow({ text: '◀️ Назад', data: 'analyze' })
+        ]);
+      }
+
+      const drift = lastActivity.hrDrift;
+      const laps = lastActivity.laps || [];
+      
+      let driftAnalysis = '';
+      if (laps.length >= 4) {
+        const mid = Math.floor(laps.length / 2);
+        const firstHalf = laps.slice(0, mid);
+        const secondHalf = laps.slice(mid);
+        
+        const avg1 = firstHalf.reduce((s, l) => s + (l.heartrate || 0), 0) / firstHalf.length;
+        const avg2 = secondHalf.reduce((s, l) => s + (l.heartrate || 0), 0) / secondHalf.length;
+        
+        driftAnalysis = `💓 Пульс 1-ша половина: <b>${Math.round(avg1)}</b> bpm
+💓 Пульс 2-га половина: <b>${Math.round(avg2)}</b> bpm
+📈 Різниця: <b>+${Math.round(avg2 - avg1)}</b> bpm`;
+      }
+
+      let status = '';
+      let recommendation = '';
+      if (drift < 5) {
+        status = '🌟 Чудова аеробна база!';
+        recommendation = 'Підтримуй темп і обсяги.';
+      } else if (drift < 8) {
+        status = '💪 Хороша аеробна база';
+        recommendation = 'Тренуйся в 2-й зоні частіше.';
+      } else if (drift < 12) {
+        status = '📊 Помірний дрейф';
+        recommendation = 'Знизь темп на 10-15 сек/км.';
+      } else {
+        status = '⚠️ Високий дрейф';
+        recommendation = 'Більше легких тренувань!';
+      }
+
+      const text = `💓 <b>АНАЛІЗ ДРЕЙФУ</b>
+
+📊 Дрейф: <b>${drift}%</b>
+
+${driftAnalysis}
+
+━━━━━━━━━━━━━━━
+
+<b>${status}</b>
+
+${recommendation}`;
+
+      await this.bot.editWithButtons(chatId, messageId, text, [
+        this.bot._buildRow(
+          { text: '⚡ Темп', data: 'analysis_pace' },
+          { text: '◀️ Назад', data: 'analyze' }
+        )
+      ]);
+    } catch (err) {
+      console.error('Drift error:', err);
+    }
+  }
+
+  async showPaceAnalysis(q) {
+    const chatId = q.message.chat.id;
+    const messageId = q.message.message_id;
+    await this.bot.answerCallback(q.id);
+
+    try {
+      const activities = await this.strava.getRecentActivities(10);
+      const lastActivity = activities[0];
+
+      if (!lastActivity) {
+        return this.bot.editWithButtons(chatId, messageId, '⚡ <b>Аналіз темпу</b>\n\nНемає даних.', [
+          this.bot._buildRow({ text: '◀️ Назад', data: 'analyze' })
+        ]);
+      }
+
+      const splits = lastActivity.splits || [];
+      let splitsAnalysis = '';
+      
+      if (splits.length > 0) {
+        const paces = splits.map(s => this.parsePace(s.pace));
+        const avgPace = paces.reduce((s, p) => s + p, 0) / paces.length;
+        const fastest = Math.min(...paces);
+        const slowest = Math.max(...paces);
+        
+        splitsAnalysis = `⚡ Середній темп: <b>${this.formatPace(avgPace)}</b>/км
+🏃 Найшвидший км: <b>${this.formatPace(fastest)}</b>/км
+🐌 Найповільніший км: <b>${this.formatPace(slowest)}</b>/км
+📊 Різниця: <b>+${this.formatPace(slowest - fastest)}</b>`;
+      }
+
+      let consistency = '';
+      if (splits.length >= 3) {
+        const paces = splits.map(s => this.parsePace(s.pace));
+        const avg = paces.reduce((s, p) => s + p, 0) / paces.length;
+        const variance = Math.sqrt(paces.reduce((s, p) => s + Math.pow(p - avg, 2), 0) / paces.length);
+        
+        if (variance < 5) consistency = '🎯 Стабільний темп!';
+        else if (variance < 10) consistency = '📊 Нормальна стабільність';
+        else consistency = '⚠️ Великі коливання темпу';
+      }
+
+      const text = `⚡ <b>АНАЛІЗ ТЕМПУ</b>
+
+📊 Темп: <b>${lastActivity.pace}</b>/км
+
+${splitsAnalysis}
+
+━━━━━━━━━━━━━━━
+
+${consistency}`;
+
+      await this.bot.editWithButtons(chatId, messageId, text, [
+        this.bot._buildRow(
+          { text: '💓 Дрейф', data: 'analysis_drift' },
+          { text: '◀️ Назад', data: 'analyze' }
+        )
+      ]);
+    } catch (err) {
+      console.error('Pace error:', err);
+    }
+  }
+
+  async cmdToday(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '🔍 Шукаю сьогоднішні тренування...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(3);
+      const today = new Date().toDateString();
+      const todayActivities = activities.filter(a => new Date(a.date).toDateString() === today);
+
+      if (todayActivities.length === 0) {
+        return this.bot.send(chatId, '📭 Сьогодні ще не було тренувань.\n\n⏰ Саме час для пробіжки!');
+      }
+
+      let response = `🏃 Сьогодні: ${todayActivities.length} тренування\n\n`;
+      
+      for (const a of todayActivities) {
+        response += `• ${a.name}\n`;
+        response += `  📏 ${a.distance} км | 🏃 ${a.pace}/км | 💓 ${a.avgHeartrate || '?'} bpm\n\n`;
+      }
+
+      const analysis = await this.trainer.analyzeActivity(todayActivities[0]);
+      response += `━━━━━━━━━━━━━━━\n${analysis}`;
+
+      await this.bot.send(chatId, response);
+    } catch (err) {
+      console.error('Today error:', err);
+      this.bot.send(chatId, '❌ Помилка отримання даних.');
+    }
+  }
+
+  async cmdStats(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '📊 Збираю статистику...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(30);
+      const running = activities.filter(a => a.type === 'Run');
+      
+      if (running.length === 0) {
+        return this.bot.send(chatId, '📭 Немає даних за цей період.');
+      }
+
+      const stats = await this.progress.getStats(30);
+      const achievements = await this.progress.getAchievements(running);
+
+      let response = `📊 <b>Статистика за 30 днів</b>\n\n`;
+      response += `🏃 ${stats.activities} тренувань\n`;
+      response += `📏 ${stats.totalKm} км\n`;
+      response += `⏱️ ${stats.totalTime} хв\n`;
+      response += `🏃 Середній темп: ${stats.avgPace}/км\n`;
+      response += `⚡ Найкращий темп: ${stats.bestPace}/км\n`;
+      
+      if (stats.avgHrDrift) {
+        response += `💓 Середній дрейф: ${stats.avgHrDrift}%\n`;
+      }
+      
+      response += `\n📅 Регулярність: ${stats.consistency}%\n`;
+
+      if (achievements.length > 0) {
+        response += `\n🏆 <b>Досягнення:</b>\n`;
+        achievements.forEach(a => response += `${a.title}\n`);
+      }
+
+      await this.bot.send(chatId, response);
+    } catch (err) {
+      console.error('Stats error:', err);
+      this.bot.send(chatId, '❌ Помилка отримання статистики.');
+    }
+  }
+
+  async cmdStatsCallback(q) {
+    await this.cmdStats({ chat: { id: q.message.chat.id } });
+    await this.bot.answerCallback(q.id);
+  }
+
+  async cmdWeek(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '📅 Генерую тижневий звіт...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(10);
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const weekActivities = activities.filter(a => new Date(a.date) >= weekAgo && a.type === 'Run');
+
+      if (weekActivities.length === 0) {
+        return this.bot.send(chatId, '📭 Немає тренувань цього тижня.');
+      }
+
+      const summary = await this.trainer.generateWeeklySummary(weekActivities);
+      await this.bot.send(chatId, summary);
+    } catch (err) {
+      console.error('Week error:', err);
+      this.bot.send(chatId, '❌ Помилка генерації звіту.');
+    }
+  }
+
+  async cmdWeekCallback(q) {
+    await this.cmdWeek({ chat: { id: q.message.chat.id } });
+    await this.bot.answerCallback(q.id);
+  }
+
+  async cmdAdvice(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '💡 Генерую персональні поради...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(10);
+      const running = activities.filter(a => a.type === 'Run');
+      const stats = await this.progress.getStats(30);
+
+      const advice = await this.trainer.generateAdvice(stats, running);
+      await this.bot.send(chatId, advice);
+    } catch (err) {
+      console.error('Advice error:', err);
+      this.bot.send(chatId, '❌ Помилка генерації порад.');
+    }
+  }
+
+  async cmdAdviceCallback(q) {
+    await this.cmdAdvice({ chat: { id: q.message.chat.id } });
+    await this.bot.answerCallback(q.id);
+  }
+
+  async cmdProgress(msg) {
+    const chatId = msg.chat.id;
+    await this.showProgress(chatId);
+  }
+
+  async cmdProgressCallback(q) {
+    await this.showProgress(q.message.chat.id, q.message.message_id, q.id);
+  }
+
+  async showProgress(chatId, messageId = null, queryId = null) {
+    if (queryId) await this.bot.answerCallback(queryId);
+
+    try {
+      const activities = await this.strava.getRecentActivities(20);
+      const running = activities.filter(a => a.type === 'Run');
+      
+      const stats = await this.progress.getStats(30);
+      const weeklyKm = this.getWeeklyData(activities);
+
+      const chart = this.charts.weeklyKmChart(weeklyKm);
+
+      let response = `<b>📈 Прогрес за ${stats.period} днів:</b>\n\n`;
+      response += `${chart}\n\n`;
+      response += `📏 Всього: ${stats.totalKm} км\n`;
+      response += `🏃 Тренувань: ${stats.activities}\n`;
+      response += `📅 Регулярність: ${stats.consistency}%\n`;
+
+      const streak = this.comparison.streakAnalysis(running);
+      if (streak) {
+        response += `\n${streak}`;
+      }
+
+      const buttons = [
+        this.bot._buildRow(
+          { text: '📊 km/тиж', data: 'chart_week' },
+          { text: '⚡ Темп', data: 'chart_pace' }
+        ),
+        this.bot._buildRow(
+          { text: '💓 Пульс', data: 'chart_hr' },
+          { text: '◀️ Меню', data: 'menu' }
+        )
+      ];
+
+      if (messageId) {
+        await this.bot.editWithButtons(chatId, messageId, response, buttons);
+      } else {
+        await this.bot.sendWithButtons(chatId, response, buttons);
+      }
+    } catch (err) {
+      console.error('Progress error:', err);
+      await this.bot.answerCallback(queryId, '❌ Помилка');
+    }
+  }
+
+  async cmdCompare(msg) {
+    const chatId = msg.chat.id;
+    await this.showComparison(chatId);
+  }
+
+  async cmdCompareCallback(q) {
+    await this.showComparison(q.message.chat.id, q.message.message_id, q.id);
+  }
+
+  async showComparison(chatId, messageId = null, queryId = null) {
+    if (queryId) await this.bot.answerCallback(queryId);
+
+    try {
+      const activities = await this.strava.getRecentActivities(20);
+      const runs = activities.filter(a => a.type === 'Run');
+
+      const { currentWeek, prevWeek } = this.getTwoWeeks(runs);
+
+      const comparison = this.comparison.compareWeeks(currentWeek, prevWeek);
+
+      const buttons = [
+        this.bot._buildRow(
+          { text: '🔄 Оновити', data: 'compare' },
+          { text: '📊 Деталі', data: 'chart_week' }
+        ),
+        this.bot._buildRow(
+          { text: '◀️ Меню', data: 'menu' }
+        )
+      ];
+
+      if (messageId) {
+        await this.bot.editWithButtons(chatId, messageId, comparison, buttons);
+      } else {
+        await this.bot.sendWithButtons(chatId, comparison, buttons);
+      }
+    } catch (err) {
+      console.error('Compare error:', err);
+      await this.bot.answerCallback(queryId, '❌ Помилка');
+    }
+  }
+
+  async cmdChart(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.sendWithButtons(chatId, '📊 <b>Графіки</b>\n\nЩо показати?', [
+      this.bot._buildRow(
+        { text: '📏 km/тиждень', data: 'chart_week' },
+        { text: '⚡ Темп', data: 'chart_pace' }
+      ),
+      this.bot._buildRow(
+        { text: '💓 Пульс', data: 'chart_hr' },
+        { text: '◀️ Меню', data: 'menu' }
+      )
+    ]);
+  }
+
+  async showWeeklyChart(q) {
+    const chatId = q.message.chat.id;
+    const messageId = q.message.message_id;
+    await this.bot.answerCallback(q.id);
+
+    try {
+      const activities = await this.strava.getRecentActivities(20);
+      const weeklyKm = this.getWeeklyData(activities);
+      const chart = this.charts.weeklyKmChart(weeklyKm);
+
+      await this.bot.editWithButtons(chatId, messageId, chart, [
+        this.bot._buildRow(
+          { text: '⚡ Темп', data: 'chart_pace' },
+          { text: '◀️ Назад', data: 'progress' }
+        )
+      ]);
+    } catch (err) {
+      console.error('Chart error:', err);
+    }
+  }
+
+  async showPaceChart(q) {
+    const chatId = q.message.chat.id;
+    const messageId = q.message.message_id;
+    await this.bot.answerCallback(q.id);
+
+    try {
+      const activities = await this.strava.getRecentActivities(10);
+      const runs = activities.filter(a => a.type === 'Run');
+      const chart = this.charts.paceChart(runs);
+
+      await this.bot.editWithButtons(chatId, messageId, `⚡ <b>Динаміка темпу</b>\n\n${chart}`, [
+        this.bot._buildRow(
+          { text: '📏 km/тиждень', data: 'chart_week' },
+          { text: '◀️ Назад', data: 'progress' }
+        )
+      ]);
+    } catch (err) {
+      console.error('Pace chart error:', err);
+    }
+  }
+
+  async showHrChart(q) {
+    const chatId = q.message.chat.id;
+    const messageId = q.message.message_id;
+    await this.bot.answerCallback(q.id);
+
+    try {
+      const activities = await this.strava.getRecentActivities(10);
+      const runs = activities.filter(a => a.type === 'Run' && a.avgHeartrate);
+
+      const zones = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 };
+      runs.forEach(a => {
+        const hr = a.avgHeartrate;
+        if (hr < 120) zones.Z1 += a.distance;
+        else if (hr < 140) zones.Z2 += a.distance;
+        else if (hr < 160) zones.Z3 += a.distance;
+        else if (hr < 175) zones.Z4 += a.distance;
+        else zones.Z5 += a.distance;
+      });
+
+      const chart = this.charts.heartRateZones(zones);
+
+      await this.bot.editWithButtons(chatId, messageId, chart, [
+        this.bot._buildRow(
+          { text: '⚡ Темп', data: 'chart_pace' },
+          { text: '◀️ Назад', data: 'progress' }
+        )
+      ]);
+    } catch (err) {
+      console.error('HR chart error:', err);
+    }
+  }
+
+  async cmdPersonalBest(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '🏆 Шукаю особисті рекорди...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(30);
+      const runs = activities.filter(a => a.type === 'Run');
+
+      const pb = this.comparison.comparePersonalBest(runs);
+
+      if (pb) {
+        await this.bot.send(chatId, pb);
+      } else {
+        await this.bot.send(chatId, '🏆 Потрібно більше даних для аналізу PB.');
+      }
+    } catch (err) {
+      console.error('PB error:', err);
+      this.bot.send(chatId, '❌ Помилка');
+    }
+  }
+
+  async cmdStreak(msg) {
+    const chatId = msg.chat.id;
+    await this.bot.send(chatId, '🔥 Аналізую серію...');
+
+    try {
+      const activities = await this.strava.getRecentActivities(30);
+      const runs = activities.filter(a => a.type === 'Run');
+
+      const streak = this.comparison.streakAnalysis(runs);
+
+      if (streak) {
+        await this.bot.send(chatId, streak);
+      } else {
+        await this.bot.send(chatId, '🔥 Потрібно більше даних.');
+      }
+    } catch (err) {
+      console.error('Streak error:', err);
+      this.bot.send(chatId, '❌ Помилка');
+    }
+  }
+
+  async showMenu(q) {
+    await this.cmdStart({ chat: { id: q.message.chat.id } });
+    await this.bot.answerCallback(q.id);
+  }
+
+  async handleText(msg) {
+    const chatId = msg.chat.id;
+    const text = msg.text?.toLowerCase() || '';
+
+    if (text.startsWith('/')) return;
+
+    if (['привіт', 'hi', 'hello', 'hey'].includes(text)) {
+      return this.cmdStart(msg);
+    }
+
+    if (['допомога', 'help'].includes(text)) {
+      return this.cmdHelp(msg);
+    }
+  }
+
+  getWeeklyData(activities) {
+    const weeks = {};
+    const now = new Date();
+
+    activities.forEach(a => {
+      const date = new Date(a.date);
+      const daysAgo = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+      const weekNum = Math.floor(daysAgo / 7);
+
+      if (!weeks[weekNum]) {
+        weeks[weekNum] = { km: 0, label: `Тиж ${4 - weekNum}` };
+      }
+      weeks[weekNum].km += a.distance || 0;
+    });
+
+    return Object.values(weeks).reverse().slice(-6);
+  }
+
+  getTwoWeeks(activities) {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const currentWeek = activities.filter(a => new Date(a.date) >= oneWeekAgo);
+    const prevWeek = activities.filter(a => new Date(a.date) >= twoWeeksAgo && new Date(a.date) < oneWeekAgo);
+
+    return { currentWeek, prevWeek };
+  }
+
+  parsePace(pace) {
+    if (!pace || typeof pace !== 'string') return 0;
+    const [m, s] = pace.split(':').map(Number);
+    return (m || 0) * 60 + (s || 0);
+  }
+
+  formatPace(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+}
+
+module.exports = MessageHandler;
