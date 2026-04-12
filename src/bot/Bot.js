@@ -56,6 +56,11 @@ class Bot {
     this.client.onText(pattern, callback);
   }
 
+  onCallback(callback) {
+    if (!this.client) return;
+    this.client.on('callback_query', callback);
+  }
+
   _buildKeyboard(buttons) {
     if (!Array.isArray(buttons)) return [];
     return buttons.map(row => 
