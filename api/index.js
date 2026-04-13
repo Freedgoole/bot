@@ -1,24 +1,11 @@
 require('dotenv').config();
-const axios = require('axios');
-const TelegramBot = require('node-telegram-bot-api');
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const STRAVA_ACCESS_TOKEN = process.env.STRAVA_ACCESS_TOKEN;
-const STRAVA_REFRESH_TOKEN = process.env.STRAVA_REFRESH_TOKEN;
-const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
-const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 
 const strava = require('./src/strava');
+const { createBot } = require('./src/bot');
 
-const bot = {
-  client: TELEGRAM_TOKEN ? new TelegramBot(TELEGRAM_TOKEN, { polling: false }) : null,
-
-  send(chatId, text, options = {}) {
-    if (!this.client) return Promise.resolve();
-    return this.client.sendMessage(chatId, text, { parse_mode: 'HTML', ...options });
-  }
-};
+const bot = createBot();
 
 const cmdStart = require('./src/handlers/cmdStart');
 const cmdAnalyze = require('./src/handlers/cmdAnalyze');
