@@ -2,16 +2,16 @@ require('dotenv').config();
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-const strava = require('./strava');
-const { createBot } = require('./bot');
+const strava = require('./src/strava');
+const { createBot } = require('./src/bot');
 
 const bot = createBot();
 
-const cmdStart = require('./handlers/cmdStart');
-const cmdAnalyze = require('./handlers/cmdAnalyze');
-const cmdStats = require('./handlers/cmdStats');
-const cmdProgress = require('./handlers/cmdProgress');
-const cmdMotivate = require('./handlers/cmdMotivate');
+const cmdStart = require('./src/handlers/cmdStart');
+const cmdAnalyze = require('./src/handlers/cmdAnalyze');
+const cmdStats = require('./src/handlers/cmdStats');
+const cmdProgress = require('./src/handlers/cmdProgress');
+const cmdMotivate = require('./src/handlers/cmdMotivate');
 
 const handlers = {
   start: cmdStart,
