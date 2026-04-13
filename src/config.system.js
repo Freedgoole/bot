@@ -20,5 +20,12 @@ module.exports = {
   },
   bot: {
     timeout: 10000
+  },
+  paceZones: {
+    Z1: { min: 360, max: Infinity, name: 'відновлення', color: '🟢' },
+    Z2: { min: 330, max: 360, name: 'база', color: '🟢' },
+    Z3: { min: 300, max: 330, name: 'темп', color: '🟡' },
+    Z4: { min: 270, max: 300, name: 'поріг', color: '🟠' },
+    Z5: { min: 0, max: 270, name: 'VO2max', color: '🔴' }
   }
 };

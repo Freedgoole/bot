@@ -1,7 +1,6 @@
-require('dotenv').systemConfig();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const systemConfig = require('./systemConfig.system');
-const userConfig = require('./systemConfig.user');
+require('dotenv').config();
+const systemConfig = require('./config.system');
+const userConfig = require('./config.user');
 const { parsePace, formatPace, getPaceZone, getZoneDistribution, getHrZone, formatHrZone } = require('./utils');
 
 class Trainer {

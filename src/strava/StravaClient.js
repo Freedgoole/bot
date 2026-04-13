@@ -1,10 +1,10 @@
-require('dotenv').systemConfig();
+require('dotenv').config();
 const axios = require('axios');
-const systemConfig = require('./systemConfig.system');
+const systemConfig = require('./config.system');
 
 class StravaClient {
   constructor() {
-    this.systemConfig = {
+    this.tokens = {
       accessToken: process.env.STRAVA_ACCESS_TOKEN,
       refreshToken: process.env.STRAVA_REFRESH_TOKEN,
       clientId: process.env.STRAVA_CLIENT_ID,
@@ -27,14 +27,14 @@ class StravaClient {
 
   async refreshToken() {
     const res = await axios.post('https://www.strava.com/oauth/token', {
-      client_id: this.systemConfig.clientId,
-      client_secret: this.systemConfig.clientSecret,
+      client_id: this.tokens.clientId,
+      client_secret: this.tokens.clientSecret,
       grant_type: 'refresh_token',
-      refresh_token: this.systemConfig.refreshToken
+      refresh_token: this.tokens.refreshToken
     });
-    this.systemConfig.accessToken = res.data.access_token;
-    this.systemConfig.refreshToken = res.data.refresh_token;
-    return this.systemConfig.accessToken;
+    this.tokens.accessToken = res.data.access_token;
+    this.tokens.refreshToken = res.data.refresh_token;
+    return this.tokens.accessToken;
   }
 
   getCacheKey(endpoint, params) {
@@ -62,7 +62,7 @@ class StravaClient {
     
     try {
       const res = await axios.get(`${this.baseUrl}${endpoint}`, {
-        headers: { Authorization: `Bearer ${this.systemConfig.accessToken}` },
+        headers: { Authorization: `Bearer ${this.tokens.accessToken}` },
         params
       });
       this.setCache(cacheKey, res.data);
