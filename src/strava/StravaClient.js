@@ -1,18 +1,18 @@
-require('dotenv').config();
+require('dotenv').systemConfig();
 const axios = require('axios');
-const config = require('./config');
+const systemConfig = require('./systemConfig.system');
 
 class StravaClient {
   constructor() {
-    this.config = {
+    this.systemConfig = {
       accessToken: process.env.STRAVA_ACCESS_TOKEN,
       refreshToken: process.env.STRAVA_REFRESH_TOKEN,
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET
     };
-    this.baseUrl = config.strava.baseUrl;
+    this.baseUrl = systemConfig.strava.baseUrl;
     this.lastRequest = 0;
-    this.minDelay = config.strava.rateLimit.minDelay;
+    this.minDelay = systemConfig.strava.rateLimit.minDelay;
     this.cache = new Map();
   }
 
@@ -27,14 +27,14 @@ class StravaClient {
 
   async refreshToken() {
     const res = await axios.post('https://www.strava.com/oauth/token', {
-      client_id: this.config.clientId,
-      client_secret: this.config.clientSecret,
+      client_id: this.systemConfig.clientId,
+      client_secret: this.systemConfig.clientSecret,
       grant_type: 'refresh_token',
-      refresh_token: this.config.refreshToken
+      refresh_token: this.systemConfig.refreshToken
     });
-    this.config.accessToken = res.data.access_token;
-    this.config.refreshToken = res.data.refresh_token;
-    return this.config.accessToken;
+    this.systemConfig.accessToken = res.data.access_token;
+    this.systemConfig.refreshToken = res.data.refresh_token;
+    return this.systemConfig.accessToken;
   }
 
   getCacheKey(endpoint, params) {
@@ -43,7 +43,7 @@ class StravaClient {
 
   getFromCache(key) {
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < config.strava.cacheTtl) {
+    if (cached && Date.now() - cached.timestamp < systemConfig.strava.cacheTtl) {
       return cached.data;
     }
     this.cache.delete(key);
@@ -62,7 +62,7 @@ class StravaClient {
     
     try {
       const res = await axios.get(`${this.baseUrl}${endpoint}`, {
-        headers: { Authorization: `Bearer ${this.config.accessToken}` },
+        headers: { Authorization: `Bearer ${this.systemConfig.accessToken}` },
         params
       });
       this.setCache(cacheKey, res.data);
@@ -105,7 +105,7 @@ class StravaClient {
   }
 
   async enrichActivities(activities) {
-    const batchSize = config.strava.enrichBatchSize;
+    const batchSize = systemConfig.strava.enrichBatchSize;
     const enriched = [];
 
     for (let i = 0; i < activities.length; i += batchSize) {

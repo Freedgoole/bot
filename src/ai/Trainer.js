@@ -1,6 +1,7 @@
-require('dotenv').config();
+require('dotenv').systemConfig();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const config = require('./config');
+const systemConfig = require('./systemConfig.system');
+const userConfig = require('./systemConfig.user');
 const { parsePace, formatPace, getPaceZone, getZoneDistribution, getHrZone, formatHrZone } = require('./utils');
 
 class Trainer {
@@ -14,7 +15,7 @@ class Trainer {
     if (!this._model) {
       this._genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       this._model = this._genAI.getGenerativeModel({ 
-        model: config.ai.model,
+        model: systemConfig.ai.model,
         systemInstruction: this.getSystemPrompt()
       });
     }
@@ -24,8 +25,8 @@ class Trainer {
   async waitForRateLimit() {
     const now = Date.now();
     const elapsed = now - this.lastRequest;
-    if (elapsed < config.ai.rateLimit.minDelay) {
-      await new Promise(r => setTimeout(r, config.ai.rateLimit.minDelay - elapsed));
+    if (elapsed < systemConfig.ai.rateLimit.minDelay) {
+      await new Promise(r => setTimeout(r, systemConfig.ai.rateLimit.minDelay - elapsed));
     }
     this.lastRequest = Date.now();
   }

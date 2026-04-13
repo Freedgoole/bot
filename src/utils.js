@@ -1,4 +1,5 @@
-const config = require('./config');
+const systemConfig = require('./config.system');
+const userConfig = require('./config.user');
 
 function parsePace(pace) {
   if (!pace || typeof pace !== 'string') return 0;
@@ -16,7 +17,7 @@ function formatPace(seconds) {
 
 function getPaceZone(pace) {
   const sec = parsePace(pace);
-  const zones = config.zones;
+  const zones = systemConfig.zones;
   
   if (sec >= zones.Z1.min) return `Z1 ${zones.Z1.color}`;
   if (sec >= zones.Z2.min) return `Z2 ${zones.Z2.color}`;
@@ -54,7 +55,7 @@ function getPaceBar(pace) {
   return `\`${bars}\``;
 }
 
-function withTimeout(promise, ms = config.bot.timeout) {
+function withTimeout(promise, ms = systemConfig.bot.timeout) {
   return Promise.race([
     promise,
     new Promise((_, reject) => 
@@ -80,10 +81,10 @@ function calculatePace(seconds, meters) {
 
 function getHrZone(heartrate) {
   if (!heartrate) return null;
-  const maxHr = config.user.maxHeartRate;
+  const maxHr = userConfig.user.maxHeartRate;
   const hr = heartrate;
   const ratio = hr / maxHr;
-  const zones = config.hrZones;
+  const zones = userConfig.hrZones;
   
   if (ratio >= zones.Z5.min) return 'Z5';
   if (ratio >= zones.Z4.min) return 'Z4';
@@ -95,8 +96,8 @@ function getHrZone(heartrate) {
 function formatHrZone(heartrate) {
   if (!heartrate) return '';
   const zone = getHrZone(heartrate);
-  const maxHr = config.user.maxHeartRate;
-  const zones = config.hrZones;
+  const maxHr = userConfig.user.maxHeartRate;
+  const zones = userConfig.hrZones;
   const hrZone = zones[zone];
   const min = Math.round(hrZone.min * maxHr);
   const max = Math.round(hrZone.max * maxHr);
