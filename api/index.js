@@ -245,6 +245,7 @@ async function cmdAnalyze(chatId) {
     }
     const activity = activities[0];
     const zone = getPaceZone(activity.pace);
+    const elevation = activity.elevation || 0;
     
     let splitsText = '';
     if (activity.splits?.length > 0) {
@@ -269,12 +270,14 @@ ${new Date(activity.date).toLocaleDateString('uk-UA')}
 • Час: ${activity.durationFormatted}
 • Темп: <b>${activity.pace}</b> хв/км
 • Зона: <b>${zone}</b>
+• Набір висоти: <b>${elevation} м</b>
 
 ━━━━━━━━━━━━━━━
 
-ПРОАНАЛІЗУЙ:
-<b>💡 Аналіз:</b> [2-3 речення]
-<b>🎯 Порада:</b> [1-2 рекомендації]`;
+ПРОАНАЛІЗУЙ та відповідь:
+<b>💡 Аналіз:</b> [2-3 речення про темп, зону, рельєф]
+<b>🎯 Порада:</b> [1-2 конкретні рекомендації]
+<b>🔥 Мотивація:</b> [1 мотиваційне речення]</b>`;
 
         const result = await model.generateContent(prompt);
         aiAnalysis = '\n' + (await result.response).text();
@@ -289,13 +292,11 @@ ${new Date(activity.date).toLocaleDateString('uk-UA')}
     const text = `🏃 <b>${activity.name}</b>
 📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
 📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км
+⛰️ Набір висоти: ${elevation} м
 ⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
-${aiAnalysis}
-
----
-${getMotivationAfterAnalyze(activity)}`;
+${aiAnalysis}`;
 
     await bot.send(chatId, text);
   } catch (err) {
