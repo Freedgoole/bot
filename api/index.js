@@ -60,7 +60,9 @@ module.exports = async (req, res) => {
 
     if (message?.text?.startsWith('/')) {
       const chatId = message.chat.id;
-      const command = message.text.slice(1).split(' ')[0];
+      const parts = message.text.slice(1).split(' ');
+      const command = parts[0];
+      const args = parts.slice(1);
 
       const commands = {
         start: () => handler.cmdStart({ chat: { id: chatId } }),
