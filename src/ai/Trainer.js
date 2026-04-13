@@ -53,8 +53,45 @@ class Trainer {
       return (await result.response).text();
     } catch (err) {
       console.error('AI Error:', err.message);
-      return '🏃 Тренер зараз зайнятий. Спробуй пізніше!';
+      return this.fallbackAnalysis(activity);
     }
+  }
+
+  fallbackAnalysis(activity) {
+    const distance = activity.distance || 0;
+    const pace = activity.pace || '0:00';
+    const paceSec = parsePace(pace);
+    
+    const zones = {
+      Z1: { label: 'Відновлення', emoji: '🧘' },
+      Z2: { label: 'База', emoji: '🌿' },
+      Z3: { label: 'Темп', emoji: '⚡' },
+      Z4: { label: 'Поріг', emoji: '🔥' },
+      Z5: { label: 'VO2max', emoji: '🚀' }
+    };
+    
+    let zone, emoji;
+    if (paceSec >= 360) { zone = zones.Z1; emoji = '🧘'; }
+    else if (paceSec >= 330) { zone = zones.Z2; emoji = '🌿'; }
+    else if (paceSec >= 300) { zone = zones.Z3; emoji = '⚡'; }
+    else if (paceSec >= 270) { zone = zones.Z4; emoji = '🔥'; }
+    else { zone = zones.Z5; emoji = '🚀'; }
+    
+    let verdict, type;
+    if (distance >= 21) { verdict = 'Марафон'; type = '🏆'; }
+    else if (distance >= 15) { verdict = 'Довгий біг'; type = '💪'; }
+    else if (distance >= 10) { verdict = 'Темповий біг'; type = '⚡'; }
+    else if (distance >= 5) { verdict = 'Середній біг'; type = '🏃'; }
+    else { verdict = 'Короткий біг'; type = '🏃‍♂️'; }
+    
+    return `${emoji} <b>${verdict}</b>
+${type} ${zone.label}
+
+💡 Аналіз:
+Чудовий забіг на ${distance} км! Темп ${pace} хв/км - це ${zone.label} зона.
+
+🎯 Порада:
+Тримай такий темп ${paceSec >= 300 ? 'для довших дистанцій' : 'для покращення витривалості'}!`;
   }
 
   async generateAdvice(athleteData, recentActivities) {
