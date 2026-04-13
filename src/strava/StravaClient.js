@@ -1,6 +1,12 @@
 require('dotenv').config();
 const axios = require('axios');
-const systemConfig = require('./config.system');
+
+const STRAVA_CONFIG = {
+  baseUrl: 'https://www.strava.com/api/v3',
+  rateLimit: { minDelay: 2000 },
+  enrichBatchSize: 3,
+  cacheTtl: 300000
+};
 
 class StravaClient {
   constructor() {
@@ -10,9 +16,9 @@ class StravaClient {
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET
     };
-    this.baseUrl = systemConfig.strava.baseUrl;
+    this.baseUrl = STRAVA_CONFIG.baseUrl;
     this.lastRequest = 0;
-    this.minDelay = systemConfig.strava.rateLimit.minDelay;
+    this.minDelay = STRAVA_CONFIG.rateLimit.minDelay;
     this.cache = new Map();
   }
 
@@ -43,7 +49,7 @@ class StravaClient {
 
   getFromCache(key) {
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < systemConfig.strava.cacheTtl) {
+    if (cached && Date.now() - cached.timestamp < STRAVA_CONFIG.cacheTtl) {
       return cached.data;
     }
     this.cache.delete(key);
@@ -105,7 +111,7 @@ class StravaClient {
   }
 
   async enrichActivities(activities) {
-    const batchSize = systemConfig.strava.enrichBatchSize;
+    const batchSize = STRAVA_CONFIG.enrichBatchSize;
     const enriched = [];
 
     for (let i = 0; i < activities.length; i += batchSize) {

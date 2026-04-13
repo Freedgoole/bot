@@ -1,5 +1,23 @@
-const systemConfig = require('./config.system');
-const userConfig = require('./config.user');
+require('dotenv').config();
+
+const MAX_HR = process.env.USER_MAX_HR || 185;
+const BOT_TIMEOUT = 10000;
+
+const PACE_ZONES = {
+  Z1: { min: 360, max: Infinity, name: 'відновлення', color: '🟢' },
+  Z2: { min: 330, max: 360, name: 'база', color: '🟢' },
+  Z3: { min: 300, max: 330, name: 'темп', color: '🟡' },
+  Z4: { min: 270, max: 300, name: 'поріг', color: '🟠' },
+  Z5: { min: 0, max: 270, name: 'VO2max', color: '🔴' }
+};
+
+const HR_ZONES = {
+  Z1: { min: 0.50, max: 0.60, name: 'відновлення' },
+  Z2: { min: 0.60, max: 0.70, name: 'база' },
+  Z3: { min: 0.70, max: 0.80, name: 'аеробна' },
+  Z4: { min: 0.80, max: 0.90, name: 'поріг' },
+  Z5: { min: 0.90, max: 1.00, name: 'максимум' }
+};
 
 function parsePace(pace) {
   if (!pace || typeof pace !== 'string') return 0;
@@ -17,13 +35,11 @@ function formatPace(seconds) {
 
 function getPaceZone(pace) {
   const sec = parsePace(pace);
-  const zones = systemConfig.zones;
-  
-  if (sec >= zones.Z1.min) return `Z1 ${zones.Z1.color}`;
-  if (sec >= zones.Z2.min) return `Z2 ${zones.Z2.color}`;
-  if (sec >= zones.Z3.min) return `Z3 ${zones.Z3.color}`;
-  if (sec >= zones.Z4.min) return `Z4 ${zones.Z4.color}`;
-  return `Z5 ${zones.Z5.color}`;
+  if (sec >= 360) return `Z1 ${PACE_ZONES.Z1.color}`;
+  if (sec >= 330) return `Z2 ${PACE_ZONES.Z2.color}`;
+  if (sec >= 300) return `Z3 ${PACE_ZONES.Z3.color}`;
+  if (sec >= 270) return `Z4 ${PACE_ZONES.Z4.color}`;
+  return `Z5 ${PACE_ZONES.Z5.color}`;
 }
 
 function getZoneDistribution(splits) {
@@ -55,7 +71,7 @@ function getPaceBar(pace) {
   return `\`${bars}\``;
 }
 
-function withTimeout(promise, ms = systemConfig.bot.timeout) {
+function withTimeout(promise, ms = BOT_TIMEOUT) {
   return Promise.race([
     promise,
     new Promise((_, reject) => 
@@ -81,26 +97,22 @@ function calculatePace(seconds, meters) {
 
 function getHrZone(heartrate) {
   if (!heartrate) return null;
-  const maxHr = userConfig.user.maxHeartRate;
   const hr = heartrate;
-  const ratio = hr / maxHr;
-  const zones = userConfig.hrZones;
+  const ratio = hr / MAX_HR;
   
-  if (ratio >= zones.Z5.min) return 'Z5';
-  if (ratio >= zones.Z4.min) return 'Z4';
-  if (ratio >= zones.Z3.min) return 'Z3';
-  if (ratio >= zones.Z2.min) return 'Z2';
+  if (ratio >= HR_ZONES.Z5.min) return 'Z5';
+  if (ratio >= HR_ZONES.Z4.min) return 'Z4';
+  if (ratio >= HR_ZONES.Z3.min) return 'Z3';
+  if (ratio >= HR_ZONES.Z2.min) return 'Z2';
   return 'Z1';
 }
 
 function formatHrZone(heartrate) {
   if (!heartrate) return '';
   const zone = getHrZone(heartrate);
-  const maxHr = userConfig.user.maxHeartRate;
-  const zones = userConfig.hrZones;
-  const hrZone = zones[zone];
-  const min = Math.round(hrZone.min * maxHr);
-  const max = Math.round(hrZone.max * maxHr);
+  const hrZone = HR_ZONES[zone];
+  const min = Math.round(hrZone.min * MAX_HR);
+  const max = Math.round(hrZone.max * MAX_HR);
   return `${zone} (${min}-${max})`;
 }
 
