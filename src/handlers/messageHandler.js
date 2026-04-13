@@ -105,7 +105,7 @@ ${this.motivation.daily()}
 ${analysis}
 
 ---
-${this.motivation.afterRun()}`;
+${this.motivation.afterAnalyze(activity)}`;
 
       await this.bot.send(chatId, text);
     } catch (err) {
@@ -159,7 +159,7 @@ ${this.motivation.afterRun()}`;
 ${analysis}
 
 ---
-${this.motivation.afterRun()}`;
+${this.motivation.afterAnalyze(activity)}`;
 
       await this.bot.edit(chatId, messageId, text);
     } catch (err) {

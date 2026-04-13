@@ -36,7 +36,7 @@ const MOTIVATION = {
   afterRun: [
     "💪 Відмінний біг! Продовжуй!",
     "🔥 Чудова робота! Тіло дякує!",
-    "⚡ Ти зробив це!明日も一緒に走ろう!",
+    "⚡ Ти зробив це!",
     "🏃 Після бігу - найкращий сон!",
     "🎯 Кожен біг робить тебе сильнішим!"
   ],
@@ -88,11 +88,65 @@ function byStats(activities, totalKm) {
   return "🏃 Перший крок - найважчий. Ти вже біжиш!";
 }
 
+function afterAnalyze(activity) {
+  const distance = activity.distance || 0;
+  const pace = activity.pace || '0:00';
+  const paceSec = parsePace(pace);
+  
+  if (distance >= 21) {
+    return getRandom([
+      "🏆 Марафонець! Шалений результат!",
+      "🔥 21+ км! Ти не людина, ти легенда!",
+      "💪 Марафон! Твоя витривалість вражає!"
+    ]);
+  }
+  
+  if (distance >= 10) {
+    return getRandom([
+      "💪 Десятка! Чудова робота!",
+      "⚡ 10+ км! Ти в грі!",
+      "🔥 Довгий забіг - міцні ноги!"
+    ]);
+  }
+  
+  if (paceSec < 270) {
+    return getRandom([
+      "⚡ Шалений темп! Ти швидкий!",
+      "🚀 Sub-4:30! Просто бомба!",
+      "🔥 VO2max зона! Ти гориш!"
+    ]);
+  }
+  
+  if (paceSec < 300) {
+    return getRandom([
+      "💪 Хороший темп! Тримай!",
+      "⚡ Темпова зона! Чудово!"
+    ]);
+  }
+  
+  if (paceSec >= 360) {
+    return getRandom([
+      "🧘 Легкий темп - основа!",
+      "🌿 Відновлювальний біг - теж тренування!",
+      "💚 Z1 - найважливіша зона!"
+    ]);
+  }
+  
+  return getRandom(MOTIVATION.afterRun);
+}
+
+function parsePace(pace) {
+  if (!pace || typeof pace !== 'string') return 0;
+  const parts = pace.split(':').map(Number);
+  return (parts[0] || 0) * 60 + (parts[1] || 0);
+}
+
 module.exports = {
   daily,
   streak,
   achievement,
   afterRun,
   encouragement,
-  byStats
+  byStats,
+  afterAnalyze
 };
