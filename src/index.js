@@ -32,6 +32,7 @@ const handler = new MessageHandler({ bot, strava, trainer });
         else if (cmd === 'chart') await handler.cmdChart(msg);
         else if (cmd === 'pb') await handler.cmdPersonalBest(msg);
         else if (cmd === 'streak') await handler.cmdStreak(msg);
+        else if (cmd === 'motivate') await handler.cmdMotivate(msg);
       } catch (err) {
         console.error('Error:', err);
         bot.send(msg.chat.id, '❌ Помилка: ' + err.message);

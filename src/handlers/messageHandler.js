@@ -1,6 +1,7 @@
 const ProgressTracker = require('../services/ProgressTracker');
 const Charts = require('../services/Charts');
 const Comparison = require('../services/Comparison');
+const Motivation = require('../services/Motivation');
 const { parsePace, formatPace, getPaceZone, getPaceBar, withTimeout } = require('../utils');
 
 class MessageHandler {
@@ -11,6 +12,7 @@ class MessageHandler {
     this.progress = new ProgressTracker();
     this.charts = new Charts();
     this.comparison = new Comparison();
+    this.motivation = Motivation;
   }
 
   get trainer() {
@@ -29,11 +31,14 @@ class MessageHandler {
 Я твій персональний AI-тренер.
 Підключений до Strava.
 
+${this.motivation.daily()}
+
 Вибери що хочеш зробити:
 
 📊 /stats - статистика
 ⚡ /analyze - аналіз
-📈 /progress - прогрес`;
+📈 /progress - прогрес
+💡 /motivate - мотивація`;
     
     await this.bot.send(chatId, text, { parse_mode: 'HTML' });
   }
@@ -52,6 +57,7 @@ class MessageHandler {
 📉 <b>/chart</b> — графіки
 🏆 <b>/pb</b> — особисті рекорди
 🔥 <b>/streak</b> — аналіз серії
+🎯 <b>/motivate</b> — мотивація
     `);
   }
 
@@ -96,7 +102,10 @@ class MessageHandler {
 ⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
-${analysis}`;
+${analysis}
+
+---
+${this.motivation.afterRun()}`;
 
       await this.bot.send(chatId, text);
     } catch (err) {
@@ -147,7 +156,10 @@ ${analysis}`;
 ⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
-${analysis}`;
+${analysis}
+
+---
+${this.motivation.afterRun()}`;
 
       await this.bot.edit(chatId, messageId, text);
     } catch (err) {
@@ -622,6 +634,27 @@ ${consistency}`;
     } catch (err) {
       console.error('Streak error:', err);
       this.bot.send(chatId, '❌ Помилка');
+    }
+  }
+
+  async cmdMotivate(msg) {
+    const chatId = msg.chat.id;
+    
+    try {
+      const activities = await this.strava.getRecentActivities(30);
+      const runs = activities.filter(a => a.type === 'Run');
+      const totalKm = runs.reduce((s, a) => s + a.distance, 0);
+      
+      const text = `🎯 <b>Мотивація для тебе:</b>
+
+${this.motivation.daily()}
+
+---
+${this.motivation.byStats(runs.length, totalKm)}`;
+      
+      await this.bot.send(chatId, text, { parse_mode: 'HTML' });
+    } catch (err) {
+      await this.bot.send(chatId, this.motivation.daily());
     }
   }
 

@@ -77,6 +77,7 @@ module.exports = async (req, res) => {
         chart: () => handler.cmdChart({ chat: { id: chatId } }),
         pb: () => handler.cmdPersonalBest({ chat: { id: chatId } }),
         streak: () => handler.cmdStreak({ chat: { id: chatId } }),
+        motivate: () => handler.cmdMotivate({ chat: { id: chatId } }),
       };
 
       if (commands[command]) {
