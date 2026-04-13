@@ -253,7 +253,38 @@ async function cmdAnalyze(chatId) {
       ).join('\n');
     }
 
-    const motivation = getMotivationAfterAnalyze(activity);
+    let aiAnalysis = '';
+    if (GEMINI_API_KEY) {
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        
+        const prompt = `<b>🏃 АНАЛІЗ ТРЕНУВАННЯ</b>
+
+<b>📍 ${activity.name}</b>
+${new Date(activity.date).toLocaleDateString('uk-UA')}
+
+<b>📊 Показники:</b>
+• Дистанція: <b>${activity.distance} км</b>
+• Час: ${activity.durationFormatted}
+• Темп: <b>${activity.pace}</b> хв/км
+• Зона: <b>${zone}</b>
+
+━━━━━━━━━━━━━━━
+
+ПРОАНАЛІЗУЙ:
+<b>💡 Аналіз:</b> [2-3 речення]
+<b>🎯 Порада:</b> [1-2 рекомендації]`;
+
+        const result = await model.generateContent(prompt);
+        aiAnalysis = '\n' + (await result.response).text();
+      } catch (aiErr) {
+        console.error('AI Error:', aiErr.message);
+        aiAnalysis = '\n' + getMotivationAfterAnalyze(activity);
+      }
+    } else {
+      aiAnalysis = '\n' + getMotivationAfterAnalyze(activity);
+    }
 
     const text = `🏃 <b>${activity.name}</b>
 📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}
@@ -261,8 +292,7 @@ async function cmdAnalyze(chatId) {
 ⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
-
-${motivation}`;
+${aiAnalysis}`;
 
     await bot.send(chatId, text);
   } catch (err) {
