@@ -292,7 +292,10 @@ ${new Date(activity.date).toLocaleDateString('uk-UA')}
 ⚡ Зона: ${zone}${splitsText}
 
 ━━━━━━━━━━━━━━━
-${aiAnalysis}`;
+${aiAnalysis}
+
+---
+${getMotivationAfterAnalyze(activity)}`;
 
     await bot.send(chatId, text);
   } catch (err) {
