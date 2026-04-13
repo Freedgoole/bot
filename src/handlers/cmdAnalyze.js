@@ -1,47 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-const PACE_ZONES = {
-  Z1: { min: 360, max: Infinity, name: 'відновлення', color: '🟢' },
-  Z2: { min: 330, max: 360, name: 'база', color: '🟢' },
-  Z3: { min: 300, max: 330, name: 'темп', color: '🟡' },
-  Z4: { min: 270, max: 300, name: 'поріг', color: '🟠' },
-  Z5: { min: 0, max: 270, name: 'VO2max', color: '🔴' }
-};
-
-const MOTIVATION = {
-  afterRun: [
-    "💪 Відмінний біг! Продовжуй!",
-    "🔥 Чудова робота! Тіло дякує!",
-    "⚡ Ти зробив це!",
-    "🏃 Після бігу - найкращий сон!"
-  ]
-};
-
-function parsePace(pace) {
-  if (!pace || typeof pace !== 'string') return 0;
-  const parts = pace.split(':').map(Number);
-  return (parts[0] || 0) * 60 + (parts[1] || 0);
-}
-
-function getPaceZone(pace) {
-  const sec = parsePace(pace);
-  if (sec >= 360) return `Z1 ${PACE_ZONES.Z1.color}`;
-  if (sec >= 330) return `Z2 ${PACE_ZONES.Z2.color}`;
-  if (sec >= 300) return `Z3 ${PACE_ZONES.Z3.color}`;
-  if (sec >= 270) return `Z4 ${PACE_ZONES.Z4.color}`;
-  return `Z5 ${PACE_ZONES.Z5.color}`;
-}
-
-function getMotivationAfterAnalyze(activity) {
-  const distance = activity.distance || 0;
-  const paceSec = parsePace(activity.pace || '0:00');
-  
-  if (distance >= 21) return "🏆 Марафонець! Шалений результат!";
-  if (distance >= 10) return "💪 Десятка! Чудова робота!";
-  if (paceSec < 270) return "⚡ Шалений темп! Ти швидкий!";
-  if (paceSec >= 360) return "🧘 Легкий темп - основа!";
-  return MOTIVATION.afterRun[Math.floor(Math.random() * MOTIVATION.afterRun.length)];
-}
+const { getPaceZone, getMotivationAfterAnalyze } = require('../utils');
 
 async function cmdAnalyze(bot, strava, GEMINI_API_KEY) {
   return async (chatId) => {

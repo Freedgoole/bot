@@ -1,3 +1,5 @@
+const { calculateAvgPace, getDailyMotivation } = require('../utils');
+
 async function cmdStats(bot, strava) {
   return async (chatId) => {
     await bot.send(chatId, '📊 Збираю статистику...');
@@ -21,7 +23,7 @@ async function cmdStats(bot, strava) {
 🏃 Середній темп: ${avgPace}/км
 
 ---
-🏃‍♂️ Кожен крок наближає тебе до мети!`;
+${getDailyMotivation()}`;
 
       await bot.send(chatId, response);
     } catch (err) {
@@ -29,15 +31,6 @@ async function cmdStats(bot, strava) {
       bot.send(chatId, '❌ Помилка отримання статистики.');
     }
   };
-}
-
-function calculateAvgPace(activities) {
-  const totalSec = activities.reduce((s, a) => s + a.duration, 0);
-  const totalM = activities.reduce((s, a) => s + a.distance * 1000, 0);
-  const pace = totalSec / (totalM / 1000);
-  const m = Math.floor(pace / 60);
-  const s = Math.round(pace % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
 module.exports = cmdStats;
