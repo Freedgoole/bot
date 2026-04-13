@@ -1,5 +1,6 @@
 require('dotenv').config();
 const axios = require('axios');
+const config = require('./config');
 
 class StravaClient {
   constructor() {
@@ -9,9 +10,10 @@ class StravaClient {
       clientId: process.env.STRAVA_CLIENT_ID,
       clientSecret: process.env.STRAVA_CLIENT_SECRET
     };
-    this.baseUrl = 'https://www.strava.com/api/v3';
+    this.baseUrl = config.strava.baseUrl;
     this.lastRequest = 0;
-    this.minDelay = 2000;
+    this.minDelay = config.strava.rateLimit.minDelay;
+    this.cache = new Map();
   }
 
   async waitForRateLimit() {
@@ -35,14 +37,35 @@ class StravaClient {
     return this.config.accessToken;
   }
 
+  getCacheKey(endpoint, params) {
+    return `${endpoint}?${new URLSearchParams(params).toString()}`;
+  }
+
+  getFromCache(key) {
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < config.strava.cacheTtl) {
+      return cached.data;
+    }
+    this.cache.delete(key);
+    return null;
+  }
+
+  setCache(key, data) {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
   async request(endpoint, params = {}, retry = true) {
     await this.waitForRateLimit();
+    const cacheKey = this.getCacheKey(endpoint, params);
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
     
     try {
       const res = await axios.get(`${this.baseUrl}${endpoint}`, {
         headers: { Authorization: `Bearer ${this.config.accessToken}` },
         params
       });
+      this.setCache(cacheKey, res.data);
       return res.data;
     } catch (err) {
       if (err.response?.status === 401 && retry) {
@@ -82,19 +105,32 @@ class StravaClient {
   }
 
   async enrichActivities(activities) {
-    return Promise.all(
-      activities.map(async (activity) => {
-        try {
-          const [details, laps] = await Promise.all([
-            this.getActivity(activity.id),
-            this.getActivityLaps(activity.id)
-          ]);
-          return this.formatActivity(activity, details, laps);
-        } catch {
-          return this.formatActivity(activity);
-        }
-      })
-    );
+    const batchSize = config.strava.enrichBatchSize;
+    const enriched = [];
+
+    for (let i = 0; i < activities.length; i += batchSize) {
+      const batch = activities.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(async (activity) => {
+          try {
+            const [details, laps] = await Promise.all([
+              this.getActivity(activity.id),
+              this.getActivityLaps(activity.id)
+            ]);
+            return this.formatActivity(activity, details, laps);
+          } catch (err) {
+            console.error(`Failed to enrich activity ${activity.id}:`, err.message);
+            return this.formatActivity(activity);
+          }
+        })
+      );
+      
+      results.forEach(r => {
+        if (r.status === 'fulfilled') enriched.push(r.value);
+      });
+    }
+
+    return enriched;
   }
 
   formatActivity(activity, details = null, laps = []) {

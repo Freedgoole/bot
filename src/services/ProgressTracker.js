@@ -1,4 +1,5 @@
 const JsonStore = require('../db/JsonStore');
+const { parsePace, formatPace } = require('../utils');
 
 class ProgressTracker {
   constructor() {

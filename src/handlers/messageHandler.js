@@ -1,6 +1,7 @@
 const ProgressTracker = require('../services/ProgressTracker');
 const Charts = require('../services/Charts');
 const Comparison = require('../services/Comparison');
+const { parsePace, formatPace, getPaceZone, getPaceBar, withTimeout } = require('../utils');
 
 class MessageHandler {
   constructor(services) {
@@ -673,37 +674,6 @@ ${consistency}`;
     return { currentWeek, prevWeek };
   }
 
-  parsePace(pace) {
-    if (!pace || typeof pace !== 'string') return 0;
-    const [m, s] = pace.split(':').map(Number);
-    return (m || 0) * 60 + (s || 0);
-  }
-
-  formatPace(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = Math.round(seconds % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  }
-
-  getPaceBar(pace) {
-    const sec = this.parsePace(pace);
-    let bars = '';
-    if (sec >= 360) bars = '░░░░░';
-    else if (sec >= 330) bars = '▓░░░░';
-    else if (sec >= 300) bars = '▓▓░░░';
-    else if (sec >= 270) bars = '▓▓▓░░';
-    else bars = '▓▓▓▓▓';
-    return `\`${bars}\``;
-  }
-
-  withTimeout(promise, ms = 10000) {
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('⏱️ Час очікування вичерпано')), ms)
-      )
-    ]);
-  }
 }
 
 module.exports = MessageHandler;

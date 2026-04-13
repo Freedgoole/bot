@@ -1,21 +1,22 @@
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const config = require('./config');
+const { parsePace, formatPace, getPaceZone, getZoneDistribution, getHrZone, formatHrZone } = require('./utils');
 
 class Trainer {
   constructor() {
     this._genAI = null;
     this._model = null;
     this.lastRequest = 0;
-    this.minDelay = 2000;
   }
 
   get model() {
     if (!this._model) {
       this._genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this._model = this._genAI.getGenerativeModel({ 
-      model: 'gemini-3-flash-preview',
-      systemInstruction: this.getSystemPrompt()
-    });
+      this._model = this._genAI.getGenerativeModel({ 
+        model: config.ai.model,
+        systemInstruction: this.getSystemPrompt()
+      });
     }
     return this._model;
   }
@@ -23,8 +24,8 @@ class Trainer {
   async waitForRateLimit() {
     const now = Date.now();
     const elapsed = now - this.lastRequest;
-    if (elapsed < this.minDelay) {
-      await new Promise(r => setTimeout(r, this.minDelay - elapsed));
+    if (elapsed < config.ai.rateLimit.minDelay) {
+      await new Promise(r => setTimeout(r, config.ai.rateLimit.minDelay - elapsed));
     }
     this.lastRequest = Date.now();
   }
@@ -83,21 +84,20 @@ class Trainer {
     const splits = activity.splits?.map(s => ({
       km: s.km,
       pace: s.pace,
-      zone: this.getPaceZone(s.pace)
+      zone: getPaceZone(s.pace)
     })) || [];
 
     const splitsText = splits.map(s => `${s.km}км: <b>${s.pace}</b> (${s.zone})`).join('\n') || 'немає';
 
-    const avgPaceSec = this.parsePace(activity.pace);
-    const mainZone = this.getPaceZone(activity.pace);
-
-    const zoneDistribution = this.getZoneDistribution(splits);
+    const avgPaceSec = parsePace(activity.pace);
+    const mainZone = getPaceZone(activity.pace);
+    const zoneDistribution = getZoneDistribution(splits);
 
     let historySection = '';
     if (history.length > 0) {
-      const avgPace = (history.reduce((s, a) => s + this.parsePace(a.pace || '0:00'), 0) / history.length);
+      const avgPace = (history.reduce((s, a) => s + parsePace(a.pace || '0:00'), 0) / history.length);
       const trend = avgPaceSec < avgPace ? '📈 швидше' : '📉 повільніше';
-      historySection = `\n📈 Історія (${history.length} тренувань): ${this.formatPace(avgPace)} хв/км — ${trend}`;
+      historySection = `\n📈 Історія (${history.length} тренувань): ${formatPace(avgPace)} хв/км — ${trend}`;
     }
 
     return `<b>🏃 АНАЛІЗ ТРЕНУВАННЯ</b>
@@ -134,11 +134,11 @@ ${zoneDistribution}
 
   buildAdvicePrompt(athleteData, recentActivities) {
     const stats = this.calculateStats(recentActivities);
-    const avgZone = this.getPaceZone(stats.avgPace);
+    const avgZone = getPaceZone(stats.avgPace);
 
     const recent = recentActivities.slice(0, 7).map(a => {
       const date = new Date(a.date).toLocaleDateString('uk-UA', { weekday: 'short', day: 'numeric' });
-      const zone = this.getPaceZone(a.pace || '0:00');
+      const zone = getPaceZone(a.pace || '0:00');
       return `${date}: ${a.distance}км <b>${a.pace}</b> (${zone})`;
     }).join('\n');
 
@@ -174,13 +174,12 @@ ${recent}
   buildWeeklyPrompt(activities) {
     const stats = this.calculateStats(activities);
     const totalKm = activities.reduce((s, a) => s + (a.distance || 0), 0);
-    const avgZone = this.getPaceZone(stats.avgPace);
-
+    const avgZone = getPaceZone(stats.avgPace);
     const zoneDist = this.calculateZoneDistribution(activities);
 
     const activitiesList = activities.map(a => {
       const date = new Date(a.date).toLocaleDateString('uk-UA', { weekday: 'short', day: 'numeric' });
-      const zone = this.getPaceZone(a.pace || '0:00');
+      const zone = getPaceZone(a.pace || '0:00');
       return `${date}: ${a.distance}км <b>${a.pace}</b> (${zone})`;
     }).join('\n');
 
@@ -212,38 +211,11 @@ ${activitiesList}
 • Увага на: [пункт]`;
   }
 
-  getPaceZone(pace) {
-    const sec = this.parsePace(pace);
-    if (sec >= 360) return 'Z1 🟢'; // > 6:00
-    if (sec >= 330) return 'Z2 🟢'; // 5:30-6:00
-    if (sec >= 300) return 'Z3 🟡'; // 5:00-5:30
-    if (sec >= 270) return 'Z4 🟠'; // 4:30-5:00
-    return 'Z5 🔴'; // < 4:30
-  }
-
-  getZoneDistribution(splits) {
-    const zones = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 };
-    
-    splits.forEach(s => {
-      const sec = this.parsePace(s.pace);
-      if (sec >= 360) zones.Z1++;
-      else if (sec >= 330) zones.Z2++;
-      else if (sec >= 300) zones.Z3++;
-      else if (sec >= 270) zones.Z4++;
-      else zones.Z5++;
-    });
-
-    const total = splits.length || 1;
-    return Object.entries(zones)
-      .map(([zone, count]) => `${zone}: ${'█'.repeat(count)}${'░'.repeat(Math.max(0, 5-count))} ${Math.round(count/total*100)}%`)
-      .join('\n');
-  }
-
   calculateZoneDistribution(activities) {
     const zones = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 };
     
     activities.forEach(a => {
-      const sec = this.parsePace(a.pace || '0:00');
+      const sec = parsePace(a.pace || '0:00');
       if (sec >= 360) zones.Z1 += a.distance || 0;
       else if (sec >= 330) zones.Z2 += a.distance || 0;
       else if (sec >= 300) zones.Z3 += a.distance || 0;
@@ -257,19 +229,6 @@ ${activitiesList}
       .join('\n');
   }
 
-  parsePace(pace) {
-    if (!pace || typeof pace !== 'string') return 0;
-    const parts = pace.split(':').map(Number);
-    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return 0;
-    return parts[0] * 60 + parts[1];
-  }
-
-  formatPace(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = Math.round(seconds % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  }
-
   calculateStats(activities) {
     if (!activities || activities.length === 0) {
       return { count: 0, totalKm: '0', totalTime: 0, avgPace: '0:00', avgDrift: '0', bestPace: '0:00' };
@@ -280,13 +239,13 @@ ${activitiesList}
     const totalTime = Math.round(activities.reduce((s, a) => s + (a.duration || 0), 0) / 60);
     const totalSec = activities.reduce((s, a) => s + (a.duration || 0), 0);
     const totalM = activities.reduce((s, a) => s + ((a.distance || 0) * 1000), 0);
-    const avgPace = count > 0 && totalM > 0 ? this.formatPace(totalSec / (totalM / 1000)) : '0:00';
+    const avgPace = count > 0 && totalM > 0 ? formatPace(totalSec / (totalM / 1000)) : '0:00';
     const withDrift = activities.filter(a => a.hrDrift);
     const avgDrift = withDrift.length > 0
       ? (withDrift.reduce((s, a) => s + a.hrDrift, 0) / withDrift.length).toFixed(1)
       : '0';
     const bestPace = count > 0 
-      ? [...activities].sort((a, b) => this.parsePace(a.pace) - this.parsePace(b.pace))[0]?.pace || '0:00'
+      ? [...activities].sort((a, b) => parsePace(a.pace) - parsePace(b.pace))[0]?.pace || '0:00'
       : '0:00';
 
     return { count, totalKm, totalTime, avgPace, avgDrift, bestPace };
