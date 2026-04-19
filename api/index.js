@@ -152,8 +152,8 @@ const strava = {
     const isInterval = this.isIntervalRun(activity.name, laps);
     const useLaps = isInterval && laps?.length > 0;
     const segments = useLaps 
-      ? laps.map((l, i) => ({ lap: i + 1, pace: this.calculatePace(l.moving_time, l.distance), heartrate: Math.round(l.average_heartrate) || null, name: l.name }))
-      : details?.splits_metric?.map(s => ({ km: s.split, pace: this.calculatePace(s.moving_time, s.distance), heartrate: Math.round(s.average_heartrate) || null })) || [];
+      ? laps.map((l, i) => ({ lap: i + 1, pace: this.calculatePace(l.moving_time, l.distance), time: this.formatTime(l.moving_time), distance: (l.distance / 1000).toFixed(2), heartrate: Math.round(l.average_heartrate) || null, name: l.name }))
+      : details?.splits_metric?.map(s => ({ km: s.split, pace: this.calculatePace(s.moving_time, s.distance), time: this.formatTime(s.moving_time), distance: (s.distance / 1000).toFixed(2), heartrate: Math.round(s.average_heartrate) || null })) || [];
     return {
       id: activity.id, name: activity.name, type: activity.type, date: activity.start_date,
       distance: parseFloat((activity.distance / 1000).toFixed(2)),
@@ -193,9 +193,9 @@ async function cmdAnalyze(chatId) {
     let splitsText = '';
     if (activity.segments?.length > 0) {
       if (activity.isInterval) {
-        splitsText = '\n\n🔄 <b>ІНТЕРВАЛИ:</b>\n' + activity.segments.map(s => `${s.name || 'Коло ' + s.lap}: <b>${s.pace}</b>${s.heartrate ? ' ❤️' + s.heartrate : ''}`).join('\n');
+        splitsText = '\n\n🔄 <b>ІНТЕРВАЛИ:</b>\n' + activity.segments.map(s => `${s.name || 'Коло ' + s.lap}: <b>${s.pace}</b> | ${s.time} | ${s.distance}км${s.heartrate ? ' ❤️' + s.heartrate : ''}`).join('\n');
       } else {
-        splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.segments.map(s => `км ${s.km}: <b>${s.pace}</b> ${getPaceZone(s.pace)}`).join('\n');
+        splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.segments.map(s => `км ${s.km}: <b>${s.pace}</b> | ${s.time} | ${s.distance}км ${getPaceZone(s.pace)}`).join('\n');
       }
     }
 
