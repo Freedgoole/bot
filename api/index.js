@@ -60,6 +60,12 @@ function formatTime(seconds) {
   return [h, m, s].map(v => v < 10 ? '0' + v : v).join(':');
 }
 
+function formatTimeShort(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m + ':' + (s < 10 ? '0' + s : s);
+}
+
 function calculateAvgPace(activities) {
   const totalSec = activities.reduce((s, a) => s + a.duration, 0);
   const totalM = activities.reduce((s, a) => s + a.distance * 1000, 0);
@@ -153,7 +159,7 @@ const strava = {
     const useLaps = isInterval && laps?.length > 0;
     const segments = useLaps 
       ? laps.map((l, i) => ({ lap: i + 1, pace: this.calculatePace(l.moving_time, l.distance), time: this.formatTime(l.moving_time), distance: (l.distance / 1000).toFixed(2), heartrate: Math.round(l.average_heartrate) || null, name: l.name }))
-      : details?.splits_metric?.map(s => ({ km: s.split, pace: this.calculatePace(s.moving_time, s.distance), time: this.formatTime(s.moving_time), distance: (s.distance / 1000).toFixed(2), heartrate: Math.round(s.average_heartrate) || null })) || [];
+      : details?.splits_metric?.map(s => ({ km: s.split, pace: this.calculatePace(s.moving_time, s.distance), time: formatTimeShort(s.moving_time), distance: (s.distance / 1000).toFixed(2), heartrate: Math.round(s.average_heartrate) || null })) || [];
     return {
       id: activity.id, name: activity.name, type: activity.type, date: activity.start_date,
       distance: parseFloat((activity.distance / 1000).toFixed(2)),
@@ -193,9 +199,10 @@ async function cmdAnalyze(chatId) {
     let splitsText = '';
     if (activity.segments?.length > 0) {
       if (activity.isInterval) {
-        splitsText = '\n\n🔄 <b>ІНТЕРВАЛИ:</b>\n' + activity.segments.map(s => `${s.name || 'Коло ' + s.lap}: <b>${s.pace}</b> | ${s.time} | ${s.distance}км${s.heartrate ? ' ❤️' + s.heartrate : ''}`).join('\n');
+        const rows = activity.segments.map(s => `${(s.name || s.lap + '').padEnd(6)}│ <b>${s.pace}</b> │ ${s.time.padEnd(5)} │ ${s.km ? s.km + 'km' : s.distance + 'km'}${s.heartrate ? ' ❤️' + s.heartrate : ''}`);
+        splitsText = '\n\n<code>🔄 ІНТЕРВАЛИ</code>\n' + '<code>Коло  │ Темп  │ Час   │ Дист</code>\n' + '<code>──────┼───────┼───────┼─────</code>\n' + rows.map(r => '<code>' + r + '</code>').join('\n');
       } else {
-        splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.segments.map(s => `км ${s.km}: <b>${s.pace}</b> | ${s.time} | ${s.distance}км ${getPaceZone(s.pace)}`).join('\n');
+        splitsText = '\n\n<code>⚡ ТЕМПИ</code>\n' + '<code>км    │ Темп  │ Час   │ Зона</code>\n' + '<code>─────┼───────┼───────┼─────</code>\n' + activity.segments.map(s => '<code>' + `${(s.km + 'km').padEnd(5)}│ <b>${s.pace}</b> │ ${s.time.padEnd(5)} │ ${getPaceZone(s.pace)}` + '</code>').join('\n');
       }
     }
 
