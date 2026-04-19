@@ -135,14 +135,21 @@ const strava = {
     return enriched;
   },
 
-  isIntervalRun(name) {
+  isIntervalRun(name, laps = null) {
     if (!name) return false;
     const lower = name.toLowerCase();
-    return lower.includes('інтервал') || lower.includes('interval') || lower.includes('repeat') || lower.includes('fartlek') || lower.includes('темп') || lower.includes('поріг');
+    if (lower.includes('інтервал') || lower.includes('interval') || lower.includes('repeat') || lower.includes('fartlek') || lower.includes('темп') || lower.includes('поріг')) return true;
+    if (laps?.length >= 4) {
+      const paces = laps.map(l => l.moving_time / (l.distance / 1000)).sort((a, b) => a - b);
+      const fastCount = paces.filter(p => p < paces[Math.floor(paces.length * 0.4)]).length;
+      const slowCount = paces.filter(p => p > paces[Math.floor(paces.length * 0.6)]).length;
+      if (fastCount >= 2 && slowCount >= 2) return true;
+    }
+    return false;
   },
 
   formatActivity(activity, details = null, laps = null) {
-    const isInterval = this.isIntervalRun(activity.name);
+    const isInterval = this.isIntervalRun(activity.name, laps);
     const useLaps = isInterval && laps?.length > 0;
     const segments = useLaps 
       ? laps.map((l, i) => ({ lap: i + 1, pace: this.calculatePace(l.moving_time, l.distance), heartrate: Math.round(l.average_heartrate) || null, name: l.name }))
@@ -208,7 +215,8 @@ async function cmdAnalyze(chatId) {
       aiAnalysis = '\n' + getMotivationAfterAnalyze(activity);
     }
 
-    const text = `🏃 <b>${activity.name}</b>\n📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}\n📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км\n⛰️ Набір висоти: ${elevation} м\n⚡ Зона: ${zone}${splitsText}\n\n━━━━━━━━━━━━━━━\n${aiAnalysis}`;
+    const intervalLabel = activity.isInterval ? ' 🔄' : '';
+    const text = `🏃${intervalLabel} <b>${activity.name}</b>\n📅 ${new Date(activity.date).toLocaleDateString('uk-UA')}\n📏 ${activity.distance} км | ⏱️ ${activity.durationFormatted} | 🏃 ${activity.pace}/км\n⛰️ Набір висоти: ${elevation} м\n⚡ Зона: ${zone}${splitsText}\n\n━━━━━━━━━━━━━━━\n${aiAnalysis}`;
     await bot.send(chatId, text);
   } catch (err) {
     console.error('Analyze error:', err);
