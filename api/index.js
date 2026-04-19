@@ -135,7 +135,18 @@ const strava = {
     return enriched;
   },
 
-  formatActivity(activity, details = null) {
+  isIntervalRun(name) {
+    if (!name) return false;
+    const lower = name.toLowerCase();
+    return lower.includes('інтервал') || lower.includes('interval') || lower.includes('repeat') || lower.includes('fartlek') || lower.includes('темп') || lower.includes('поріг');
+  },
+
+  formatActivity(activity, details = null, laps = null) {
+    const isInterval = this.isIntervalRun(activity.name);
+    const useLaps = isInterval && laps?.length > 0;
+    const segments = useLaps 
+      ? laps.map((l, i) => ({ lap: i + 1, pace: this.calculatePace(l.moving_time, l.distance), heartrate: Math.round(l.average_heartrate) || null, name: l.name }))
+      : details?.splits_metric?.map(s => ({ km: s.split, pace: this.calculatePace(s.moving_time, s.distance), heartrate: Math.round(s.average_heartrate) || null })) || [];
     return {
       id: activity.id, name: activity.name, type: activity.type, date: activity.start_date,
       distance: parseFloat((activity.distance / 1000).toFixed(2)),
@@ -143,7 +154,8 @@ const strava = {
       pace: this.calculatePace(activity.moving_time, activity.distance),
       avgHeartrate: Math.round(activity.average_heartrate) || null,
       elevation: activity.total_elevation_gain,
-      splits: details?.splits_metric?.map(s => ({ km: s.split, pace: this.calculatePace(s.moving_time, s.distance), heartrate: Math.round(s.average_heartrate) || null })) || []
+      segments,
+      isInterval
     };
   },
 
@@ -172,8 +184,12 @@ async function cmdAnalyze(chatId) {
     const elevation = activity.elevation || 0;
     
     let splitsText = '';
-    if (activity.splits?.length > 0) {
-      splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.splits.map(s => `км ${s.km}: <b>${s.pace}</b> ${getPaceZone(s.pace)}`).join('\n');
+    if (activity.segments?.length > 0) {
+      if (activity.isInterval) {
+        splitsText = '\n\n🔄 <b>ІНТЕРВАЛИ:</b>\n' + activity.segments.map(s => `${s.name || 'Коло ' + s.lap}: <b>${s.pace}</b>${s.heartrate ? ' ❤️' + s.heartrate : ''}`).join('\n');
+      } else {
+        splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.segments.map(s => `км ${s.km}: <b>${s.pace}</b> ${getPaceZone(s.pace)}`.join('\n');
+      }
     }
 
     let aiAnalysis = '';
