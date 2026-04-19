@@ -188,7 +188,7 @@ async function cmdAnalyze(chatId) {
       if (activity.isInterval) {
         splitsText = '\n\n🔄 <b>ІНТЕРВАЛИ:</b>\n' + activity.segments.map(s => `${s.name || 'Коло ' + s.lap}: <b>${s.pace}</b>${s.heartrate ? ' ❤️' + s.heartrate : ''}`).join('\n');
       } else {
-        splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.segments.map(s => `км ${s.km}: <b>${s.pace}</b> ${getPaceZone(s.pace)}`.join('\n');
+        splitsText = '\n\n⚡ <b>ТЕМПИ:</b>\n' + activity.segments.map(s => `км ${s.km}: <b>${s.pace}</b> ${getPaceZone(s.pace)}`).join('\n');
       }
     }
 
